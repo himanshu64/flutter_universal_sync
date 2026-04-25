@@ -79,5 +79,41 @@ void main() {
       expect(make().hashCode, equals(make().hashCode));
       expect(make(), isNot(equals(make(id: 'different'))));
     });
+
+    test('hashCode is consistent with equality for reordered payload keys', () {
+      final a = make(payload: const {'x': 1, 'y': 2});
+      final b = make(payload: const {'y': 2, 'x': 1});
+      expect(a, equals(b));
+      expect(a.hashCode, equals(b.hashCode));
+    });
+
+    test('entries differing only in payload are not equal', () {
+      expect(
+        make(payload: const {'name': 'apple'}),
+        isNot(equals(make(payload: const {'name': 'pear'}))),
+      );
+    });
+
+    test('copyWith with lastError: null clears the field', () {
+      final original = make(lastError: 'boom');
+      expect(original.lastError, 'boom');
+      final cleared = original.copyWith(lastError: null);
+      expect(cleared.lastError, isNull);
+    });
+
+    test('copyWith without lastError preserves the existing value', () {
+      final original = make(lastError: 'boom');
+      final preserved = original.copyWith(synced: true);
+      expect(preserved.lastError, 'boom');
+    });
+
+    test('fromMap throws ArgumentError for non-Map payload', () {
+      final entry = make();
+      final map = entry.toMap()..['payload'] = 'serialized json string';
+      expect(
+        () => SyncQueueEntry.fromMap(map),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
   });
 }

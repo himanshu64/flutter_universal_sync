@@ -1,5 +1,9 @@
 import 'sync_operation.dart';
 
+// Sentinel used by [SyncQueueEntry.copyWith] to distinguish "not provided"
+// from an explicit `null` for the [SyncQueueEntry.lastError] parameter.
+const Object _unset = Object();
+
 /// One queued local mutation awaiting push to a remote backend.
 ///
 /// Per-op queue: each [insert]/[update]/[delete] on the repository produces
@@ -51,11 +55,14 @@ class SyncQueueEntry {
   final bool synced;
 
   /// Returns a copy with the listed fields replaced.
+  ///
+  /// Passing `lastError: null` explicitly clears the field to `null`.
+  /// Omitting `lastError` entirely preserves the existing value.
   SyncQueueEntry copyWith({
     SyncOperation? operation,
     Map<String, dynamic>? payload,
     int? retryCount,
-    String? lastError,
+    Object? lastError = _unset,
     bool? synced,
   }) =>
       SyncQueueEntry(
@@ -66,7 +73,9 @@ class SyncQueueEntry {
         payload: payload ?? this.payload,
         createdAt: createdAt,
         retryCount: retryCount ?? this.retryCount,
-        lastError: lastError ?? this.lastError,
+        lastError: identical(lastError, _unset)
+            ? this.lastError
+            : lastError as String?,
         synced: synced ?? this.synced,
       );
 
@@ -85,20 +94,35 @@ class SyncQueueEntry {
       };
 
   /// Reconstructs from a map produced by [toMap].
-  factory SyncQueueEntry.fromMap(Map<String, dynamic> m) => SyncQueueEntry(
-        id: m['id'] as String,
-        table: m['table'] as String,
-        entityId: m['entity_id'] as String,
-        operation: SyncOperation.values.byName(m['operation'] as String),
-        payload: Map<String, dynamic>.from(m['payload'] as Map<dynamic, dynamic>),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(
-          m['created_at'] as int,
-          isUtc: true,
-        ),
-        retryCount: (m['retry_count'] as int?) ?? 0,
-        lastError: m['last_error'] as String?,
-        synced: (m['synced'] as int?) == 1,
+  ///
+  /// `payload` must already be a decoded `Map`. If your storage layer
+  /// serialises payloads as JSON strings, decode them in the adapter
+  /// before calling `fromMap`.
+  factory SyncQueueEntry.fromMap(Map<String, dynamic> m) {
+    final rawPayload = m['payload'];
+    if (rawPayload is! Map) {
+      throw ArgumentError.value(
+        rawPayload,
+        'payload',
+        'SyncQueueEntry.fromMap requires payload as Map, got '
+            '${rawPayload.runtimeType} — decode JSON in the adapter first',
       );
+    }
+    return SyncQueueEntry(
+      id: m['id'] as String,
+      table: m['table'] as String,
+      entityId: m['entity_id'] as String,
+      operation: SyncOperation.values.byName(m['operation'] as String),
+      payload: Map<String, dynamic>.from(rawPayload),
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        m['created_at'] as int,
+        isUtc: true,
+      ),
+      retryCount: (m['retry_count'] as int?) ?? 0,
+      lastError: m['last_error'] as String?,
+      synced: (m['synced'] as int?) == 1,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -121,7 +145,9 @@ class SyncQueueEntry {
         entityId,
         operation,
         Object.hashAll(
-          payload.entries.map((e) => Object.hash(e.key, e.value)),
+          (payload.entries.toList()
+                ..sort((a, b) => a.key.compareTo(b.key)))
+              .map((e) => Object.hash(e.key, e.value)),
         ),
         createdAt,
         retryCount,
