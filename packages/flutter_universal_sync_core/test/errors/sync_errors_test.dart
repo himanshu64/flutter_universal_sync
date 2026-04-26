@@ -22,6 +22,22 @@ void main() {
         isA<SyncException>(),
       );
     });
+
+    test('missingColumns is unmodifiable (defensive copy)', () {
+      final original = ['a', 'b'];
+      final ex = SchemaValidationException(
+        table: 't',
+        missingColumns: original,
+      );
+      // Mutating the original must NOT affect the exception's view.
+      original.add('c');
+      expect(ex.missingColumns, equals(['a', 'b']));
+      // Direct mutation of the exception's list must throw.
+      expect(
+        () => ex.missingColumns.add('x'),
+        throwsA(isA<UnsupportedError>()),
+      );
+    });
   });
 
   group('SyncPushException', () {

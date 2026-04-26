@@ -13,13 +13,13 @@ class SchemaValidationException extends SyncException {
   /// Creates a schema validation exception.
   SchemaValidationException({
     required this.table,
-    required this.missingColumns,
-  });
+    required List<String> missingColumns,
+  }) : missingColumns = List.unmodifiable(missingColumns);
 
   /// Name of the offending table.
   final String table;
 
-  /// Columns that were absent from the table's schema.
+  /// Columns that were absent from the table's schema (read-only).
   final List<String> missingColumns;
 
   @override
