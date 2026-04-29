@@ -106,7 +106,7 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
       for (final entry in _tables.entries)
         entry.key: {
           for (final row in entry.value.entries)
-            row.key: Map<String, dynamic>.from(row.value),
+            row.key: _deepCopyRow(row.value),
         },
     };
     final queueSnapshot = List<SyncQueueEntry>.from(_queue);
@@ -137,4 +137,13 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
       }
     }
   }
+}
+
+Map<String, dynamic> _deepCopyRow(Map<String, dynamic> row) =>
+    row.map((k, v) => MapEntry(k, _deepCopyValue(v)));
+
+Object? _deepCopyValue(Object? value) {
+  if (value is Map<String, dynamic>) return _deepCopyRow(value);
+  if (value is List) return value.map(_deepCopyValue).toList();
+  return value;
 }
