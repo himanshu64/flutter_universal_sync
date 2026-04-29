@@ -6,7 +6,7 @@ repository: https://github.com/REPLACE_ME/flutter_universal_sync
 issue_tracker: https://github.com/REPLACE_ME/flutter_universal_sync/issues
 
 environment:
-  sdk: ^3.6.0
+  sdk: ^3.4.0
 
 dependencies:
   test: ^1.25.0

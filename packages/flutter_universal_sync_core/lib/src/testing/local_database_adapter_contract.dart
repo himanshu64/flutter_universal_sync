@@ -37,8 +37,8 @@ void runLocalDatabaseAdapterContract({
     }) =>
         {
           SyncColumns.id: id,
-          SyncColumns.createdAt: 1_700_000_000_000,
-          SyncColumns.updatedAt: updatedAt ?? 1_700_000_000_000,
+          SyncColumns.createdAt: 1700000000000,
+          SyncColumns.updatedAt: updatedAt ?? 1700000000000,
           SyncColumns.deletedAt: deletedAt,
           SyncColumns.isSynced: 0,
           SyncColumns.syncStatus: 'pending',
@@ -62,13 +62,13 @@ void runLocalDatabaseAdapterContract({
         await adapter.insert('things', thingRow(name: 'apple'));
         await adapter.update('things', 't1', {
           'name': 'banana',
-          SyncColumns.updatedAt: 1_700_000_005_000,
+          SyncColumns.updatedAt: 1700000005000,
         });
         final row = await adapter.getById('things', 't1');
         expect(row!['name'], 'banana');
         // createdAt NOT passed to update — must be unchanged
-        expect(row[SyncColumns.createdAt], 1_700_000_000_000);
-        expect(row[SyncColumns.updatedAt], 1_700_000_005_000);
+        expect(row[SyncColumns.createdAt], 1700000000000);
+        expect(row[SyncColumns.updatedAt], 1700000005000);
       });
 
       test('update on missing row throws StateError', () async {
