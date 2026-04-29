@@ -13,5 +13,11 @@ void main() {
         'name',
       ]);
     },
+    createBrokenTable: (a) async {
+      (a as InMemoryAdapter).registerTable('broken', const [
+        'id',
+        'created_at',
+      ]);
+    },
   );
 }

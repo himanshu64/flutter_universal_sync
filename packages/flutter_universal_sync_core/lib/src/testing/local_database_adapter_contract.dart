@@ -3,6 +3,7 @@ import 'package:test/test.dart';
 import '../adapters/local_database_adapter.dart';
 import '../entities/sync_operation.dart';
 import '../entities/sync_queue_entry.dart';
+import '../errors/sync_errors.dart';
 import '../schema/sync_columns.dart';
 
 /// Runs the `LocalDatabaseAdapter` contract suite against [factory].
@@ -16,6 +17,7 @@ import '../schema/sync_columns.dart';
 void runLocalDatabaseAdapterContract({
   required LocalDatabaseAdapter Function() factory,
   required Future<void> Function(LocalDatabaseAdapter) createTestTable,
+  required Future<void> Function(LocalDatabaseAdapter) createBrokenTable,
   required String adapterName,
 }) {
   group('$adapterName — LocalDatabaseAdapter contract', () {
@@ -250,6 +252,33 @@ void runLocalDatabaseAdapterContract({
         final row = await adapter.getById('things', 'existing');
         expect(row!['name'], 'old',
             reason: 'earlier update must be rolled back too',);
+      });
+    });
+
+    group('schema validation', () {
+      test('passes when every required column is present', () async {
+        await adapter.validateSchema(['things']);
+      });
+
+      test('throws SchemaValidationException listing missing columns', () async {
+        await createBrokenTable(adapter);
+        SchemaValidationException? caught;
+        try {
+          await adapter.validateSchema(['broken']);
+        } on SchemaValidationException catch (e) {
+          caught = e;
+        }
+        expect(caught, isNotNull);
+        expect(caught!.table, 'broken');
+        expect(
+          caught.missingColumns.toSet(),
+          {
+            SyncColumns.updatedAt,
+            SyncColumns.deletedAt,
+            SyncColumns.isSynced,
+            SyncColumns.syncStatus,
+          },
+        );
       });
     });
   });
