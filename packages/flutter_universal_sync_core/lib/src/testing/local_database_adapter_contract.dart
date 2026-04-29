@@ -188,5 +188,69 @@ void runLocalDatabaseAdapterContract({
         );
       });
     });
+
+    group('transaction atomicity', () {
+      test('successful transaction commits both domain + queue writes',
+          () async {
+        await adapter.transaction(() async {
+          await adapter.insert('things', thingRow(name: 'apple'));
+          await adapter.enqueueSync(SyncQueueEntry(
+            id: 'q1',
+            table: 'things',
+            entityId: 't1',
+            operation: SyncOperation.insert,
+            payload: thingRow(name: 'apple'),
+            createdAt: DateTime.utc(2026, 4, 24),
+          ),);
+        });
+        expect(await adapter.getById('things', 't1'), isNotNull);
+        expect((await adapter.pendingSyncEntries()).map((e) => e.id), ['q1']);
+      });
+
+      test('throwing transaction rolls back both writes', () async {
+        bool threw = false;
+        try {
+          await adapter.transaction(() async {
+            await adapter.insert('things', thingRow(name: 'apple'));
+            await adapter.enqueueSync(SyncQueueEntry(
+              id: 'q1',
+              table: 'things',
+              entityId: 't1',
+              operation: SyncOperation.insert,
+              payload: thingRow(name: 'apple'),
+              createdAt: DateTime.utc(2026, 4, 24),
+            ),);
+            throw StateError('rollback please');
+          });
+        } on StateError {
+          threw = true;
+        }
+        expect(threw, isTrue, reason: 'transaction should have thrown',);
+        expect(await adapter.getById('things', 't1'), isNull,
+            reason: 'domain write must roll back',);
+        expect(await adapter.pendingSyncEntries(), isEmpty,
+            reason: 'queue write must roll back',);
+      });
+
+      test('exception from nested operation still rolls back everything',
+          () async {
+        // Row exists before the transaction; attempting to re-insert throws.
+        await adapter.insert('things', thingRow(id: 'existing', name: 'old'));
+        try {
+          await adapter.transaction(() async {
+            await adapter.update('things', 'existing', {
+              'name': 'new',
+              SyncColumns.updatedAt: 1700000005000,
+            });
+            // This second insert fails (duplicate id).
+            await adapter.insert('things', thingRow(id: 'existing'));
+          });
+          fail('should have thrown');
+        } on StateError catch (_) {/* expected */}
+        final row = await adapter.getById('things', 'existing');
+        expect(row!['name'], 'old',
+            reason: 'earlier update must be rolled back too',);
+      });
+    });
   });
 }
