@@ -1,5 +1,5 @@
 import 'package:flutter_universal_sync_core/flutter_universal_sync_core.dart';
-import 'package:flutter_universal_sync_core/src/testing/local_database_adapter_contract.dart';
+import 'package:flutter_universal_sync_core/testing.dart';
 
 import 'support/in_memory_adapter.dart';
 
