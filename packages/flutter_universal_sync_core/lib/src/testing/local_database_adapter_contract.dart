@@ -1,6 +1,8 @@
 import 'package:test/test.dart';
 
 import '../adapters/local_database_adapter.dart';
+import '../entities/sync_operation.dart';
+import '../entities/sync_queue_entry.dart';
 import '../schema/sync_columns.dart';
 
 /// Runs the `LocalDatabaseAdapter` contract suite against [factory].
@@ -108,6 +110,82 @@ void runLocalDatabaseAdapterContract({
         await adapter.delete('things', 'a');
         final rows = await adapter.getAll('things', includeDeleted: true);
         expect(rows.map((r) => r[SyncColumns.id]).toSet(), {'a', 'b'});
+      });
+    });
+
+    group('queue operations', () {
+      SyncQueueEntry entry({
+        String id = 'q1',
+        bool synced = false,
+        String? lastError,
+      }) =>
+          SyncQueueEntry(
+            id: id,
+            table: 'things',
+            entityId: 't1',
+            operation: SyncOperation.insert,
+            payload: thingRow(name: 'apple'),
+            createdAt: DateTime.utc(2026, 4, 24),
+            synced: synced,
+            lastError: lastError,
+          );
+
+      test('enqueue then pendingSyncEntries returns it', () async {
+        await adapter.enqueueSync(entry());
+        final pending = await adapter.pendingSyncEntries();
+        expect(pending.map((e) => e.id), ['q1']);
+      });
+
+      test('pendingSyncEntries preserves insertion order', () async {
+        await adapter.enqueueSync(entry(id: 'q1'));
+        await adapter.enqueueSync(entry(id: 'q2'));
+        await adapter.enqueueSync(entry(id: 'q3'));
+        expect(
+          (await adapter.pendingSyncEntries()).map((e) => e.id),
+          ['q1', 'q2', 'q3'],
+        );
+      });
+
+      test('pendingSyncEntries honors limit', () async {
+        await adapter.enqueueSync(entry(id: 'q1'));
+        await adapter.enqueueSync(entry(id: 'q2'));
+        await adapter.enqueueSync(entry(id: 'q3'));
+        expect(
+          (await adapter.pendingSyncEntries(limit: 2)).map((e) => e.id),
+          ['q1', 'q2'],
+        );
+      });
+
+      test('pendingSyncEntries excludes synced entries', () async {
+        await adapter.enqueueSync(entry(id: 'q1'));
+        await adapter.enqueueSync(entry(id: 'q2'));
+        await adapter.markSynced('q1');
+        expect(
+          (await adapter.pendingSyncEntries()).map((e) => e.id),
+          ['q2'],
+        );
+      });
+
+      test('markSynced on unknown entry throws StateError', () async {
+        expect(
+          () => adapter.markSynced('nope'),
+          throwsA(isA<StateError>()),
+        );
+      });
+
+      test('recordSyncFailure updates lastError', () async {
+        await adapter.enqueueSync(entry(id: 'q1'));
+        await adapter.recordSyncFailure('q1', 'boom');
+        final pending = await adapter.pendingSyncEntries();
+        expect(pending.single.lastError, 'boom');
+        expect(pending.single.synced, isFalse);
+      });
+
+      test('recordSyncFailure on unknown entry throws StateError', () async {
+        expect(
+          () => adapter.recordSyncFailure('nope', 'err'),
+          throwsA(isA<StateError>()),
+        );
       });
     });
   });
