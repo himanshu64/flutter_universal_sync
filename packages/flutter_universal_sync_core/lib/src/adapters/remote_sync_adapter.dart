@@ -1,4 +1,7 @@
 import '../entities/sync_queue_entry.dart';
+// Imported solely so dartdoc resolves the [SyncPushException]/[SyncPullException] references.
+// ignore: unused_import
+import '../errors/sync_errors.dart';
 
 /// Port every remote backend (firebase, supabase, appwrite, graphql, rest)
 /// implements.

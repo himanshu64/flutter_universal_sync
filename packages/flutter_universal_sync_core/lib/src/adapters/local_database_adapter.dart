@@ -1,4 +1,7 @@
 import '../entities/sync_queue_entry.dart';
+// Imported solely so dartdoc resolves the [SchemaValidationException] reference.
+// ignore: unused_import
+import '../errors/sync_errors.dart';
 
 /// Port every local database (sqflite, drift, hive, objectbox) implements.
 ///

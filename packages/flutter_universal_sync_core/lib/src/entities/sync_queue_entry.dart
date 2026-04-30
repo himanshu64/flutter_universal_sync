@@ -12,6 +12,15 @@ const Object _unset = Object();
 ///
 /// [retryCount] and [lastError] are populated by the sync engine
 /// (`flutter_universal_sync_engine`, Plan 2); Plan 1 only defines them.
+///
+/// Equality limitation: `==` and `hashCode` compare [payload] keys with
+/// `==` value comparison. Map values used as `==` operands fall back to
+/// reference equality, so two entries whose payloads contain structurally
+/// identical but distinct nested `Map`/`List` values may compare unequal.
+/// In Plan 1 payloads are flat row snapshots (primitives only), so this
+/// limitation never fires — but adapters that store JSON-encoded columns
+/// and decode them before calling `fromMap` should normalise nested
+/// containers to a canonical form before equality comparisons.
 class SyncQueueEntry {
   /// Creates a queue entry. [retryCount] defaults to 0; [synced] to false;
   /// [lastError] to null.

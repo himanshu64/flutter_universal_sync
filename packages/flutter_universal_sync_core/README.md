@@ -61,6 +61,14 @@ These trade-offs are deliberate for `0.1.0`. Each will either be addressed in a 
 7. **No aggregate-root FK ordering guarantees.** Consequence of (4).
 8. **Backends must accept client-supplied UUID PKs.** `SERIAL` PKs are unsupported.
 
+## Dependencies note
+
+`package:test` is declared as a runtime dependency, not a dev dependency. This is intentional: the shared `LocalDatabaseAdapterContract` test suite ships from `lib/testing.dart` so adapter packages can run it against their own implementations. Putting the suite under `lib/` requires `test` at runtime.
+
+If you depend on `flutter_universal_sync_core` from a production package, `test` will appear in your transitive dependency graph but is only loaded if you import `package:flutter_universal_sync_core/testing.dart`. The cost is one extra resolved package; nothing is loaded at runtime unless you opt in.
+
+A future major release may extract the contract suite into a sibling package (`flutter_universal_sync_core_testing`) following the `drift`/`drift_dev` model.
+
 ## Implementing `LocalDatabaseAdapter`
 
 Use the shared contract test suite:
