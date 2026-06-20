@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0 — Unreleased
+
+Engine-support contract bumps. See spec
+`docs/superpowers/specs/2026-04-30-sync-engine-design.md` §4.
+
+### Added
+- (filled in across Tasks 1–8 of the engine plan)
+
+### Changed
+- (filled in across Tasks 1–8 of the engine plan)
+
+### Migration
+- 0.1.0 adapters need to add the `next_retry_at INTEGER` column to the
+  sync queue table and create the `_sync_meta(key TEXT PRIMARY KEY,
+  value TEXT NOT NULL)` table. No 0.1.0 adapters are published yet.
+
 ## 0.1.0 — 2026-04-24
 
 Initial release. Contracts layer for the `flutter_universal_sync` family.
