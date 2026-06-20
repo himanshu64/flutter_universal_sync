@@ -414,5 +414,56 @@ void runLocalDatabaseAdapterContract({
         expect(await adapter.getMeta('k'), 'before');
       });
     });
+
+    group('pendingSyncEntries readyAt (0.2.0)', () {
+      Future<void> seed(LocalDatabaseAdapter adapter) async {
+        final base = DateTime.utc(2026, 1, 1, 12);
+        Future<void> enqueue(String id, DateTime? retryAt) =>
+            adapter.enqueueSync(SyncQueueEntry(
+              id: id,
+              table: 'users',
+              entityId: id,
+              operation: SyncOperation.insert,
+              payload: {'id': id},
+              createdAt: base,
+              nextRetryAt: retryAt,
+            ),);
+        await enqueue('q-fresh', null); // never failed
+        await enqueue('q-past', DateTime.utc(2026, 1, 1, 12, 0, 5)); // due
+        await enqueue('q-future', DateTime.utc(2026, 1, 1, 13)); // hold
+      }
+
+      test('readyAt = null returns every pending entry (back-compat)', () async {
+        final adapter = await openAdapter();
+        await seed(adapter);
+        final all = await adapter.pendingSyncEntries();
+        expect(all.map((e) => e.id), ['q-fresh', 'q-past', 'q-future']);
+      });
+
+      test('readyAt at T includes NULL and entries with retry_at <= T', () async {
+        final adapter = await openAdapter();
+        await seed(adapter);
+        final t = DateTime.utc(2026, 1, 1, 12, 0, 10);
+        final ready = await adapter.pendingSyncEntries(readyAt: t);
+        expect(ready.map((e) => e.id), ['q-fresh', 'q-past']);
+      });
+
+      test('readyAt before all retry_at still returns NULL entries', () async {
+        final adapter = await openAdapter();
+        await seed(adapter);
+        final t = DateTime.utc(2026, 1, 1, 12, 0, 0);
+        final ready = await adapter.pendingSyncEntries(readyAt: t);
+        expect(ready.map((e) => e.id), ['q-fresh']);
+      });
+
+      test('readyAt and limit combine', () async {
+        final adapter = await openAdapter();
+        await seed(adapter);
+        final t = DateTime.utc(2026, 1, 1, 12, 0, 10);
+        final ready = await adapter.pendingSyncEntries(readyAt: t, limit: 1);
+        expect(ready, hasLength(1));
+        expect(ready.first.id, 'q-fresh');
+      });
+    });
   });
 }

@@ -82,8 +82,16 @@ abstract class LocalDatabaseAdapter {
   Future<void> enqueueSync(SyncQueueEntry entry);
 
   /// Returns entries with `synced = false` in insertion order, up to [limit].
-  /// `null` limit returns every pending entry.
-  Future<List<SyncQueueEntry>> pendingSyncEntries({int? limit});
+  ///
+  /// If [readyAt] is non-null, also filters entries to those whose
+  /// `next_retry_at` is `null` OR `<= readyAt`. The engine passes its
+  /// current clock here to skip backoff-deferred entries. When omitted,
+  /// every pending entry is returned regardless of `next_retry_at`
+  /// (preserves Plan 1 behaviour).
+  Future<List<SyncQueueEntry>> pendingSyncEntries({
+    int? limit,
+    DateTime? readyAt,
+  });
 
   /// Marks the given queue entry as successfully synced.
   Future<void> markSynced(String queueEntryId);

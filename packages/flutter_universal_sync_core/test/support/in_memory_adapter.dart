@@ -92,8 +92,17 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
   }
 
   @override
-  Future<List<SyncQueueEntry>> pendingSyncEntries({int? limit}) async {
-    final pending = _queue.where((e) => !e.synced).toList();
+  Future<List<SyncQueueEntry>> pendingSyncEntries({
+    int? limit,
+    DateTime? readyAt,
+  }) async {
+    bool ready(SyncQueueEntry e) {
+      if (readyAt == null) return true;
+      final r = e.nextRetryAt;
+      return r == null || !r.isAfter(readyAt);
+    }
+
+    final pending = _queue.where((e) => !e.synced && ready(e)).toList();
     if (limit == null || limit >= pending.length) return pending;
     return pending.sublist(0, limit);
   }
