@@ -42,6 +42,17 @@ abstract class LocalDatabaseAdapter {
   /// Throws [StateError] if the row does not exist.
   Future<void> delete(String table, String id);
 
+  /// Inserts the row if no row with the same `id` exists, otherwise
+  /// patches the existing row with the keys in [data]. Soft-delete
+  /// column on [data] is honoured (the engine uses [upsert] to apply
+  /// pulled tombstones).
+  ///
+  /// Caller supplies all sync metadata fields; the adapter does not
+  /// populate them. Atomic with respect to [transaction].
+  ///
+  /// Added in 0.2.0 for the engine's pull pipeline.
+  Future<void> upsert(String table, Map<String, dynamic> data);
+
   /// Returns the row with the given id, or `null` if it does not exist.
   /// Soft-deleted rows are returned (inspect `deleted_at` to detect).
   Future<Map<String, dynamic>?> getById(String table, String id);

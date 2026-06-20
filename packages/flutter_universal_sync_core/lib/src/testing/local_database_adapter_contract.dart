@@ -49,6 +49,10 @@ void runLocalDatabaseAdapterContract({
           if (name != null) 'name': name,
         };
 
+    // Returns the per-test [adapter] (re-created fresh in [setUp]). The
+    // 0.2.0 contract groups below were authored against this helper.
+    Future<LocalDatabaseAdapter> openAdapter() async => adapter;
+
     group('domain CRUD', () {
       test('insert then getById round-trips the row', () async {
         await adapter.insert('things', thingRow(name: 'apple'));
@@ -279,6 +283,86 @@ void runLocalDatabaseAdapterContract({
             SyncColumns.syncStatus,
           },
         );
+      });
+    });
+
+    group('upsert (0.2.0)', () {
+      test('inserts when row does not exist', () async {
+        final adapter = await openAdapter();
+        await adapter.upsert('users', {
+          SyncColumns.id: 'u1',
+          'name': 'Alice',
+          SyncColumns.createdAt: 1000,
+          SyncColumns.updatedAt: 1000,
+          SyncColumns.deletedAt: null,
+          SyncColumns.isSynced: 1,
+          SyncColumns.syncStatus: 'synced',
+        });
+        final row = await adapter.getById('users', 'u1');
+        expect(row, isNotNull);
+        expect(row![SyncColumns.id], 'u1');
+        expect(row['name'], 'Alice');
+      });
+
+      test('updates when row exists, replacing payload fields', () async {
+        final adapter = await openAdapter();
+        await adapter.insert('users', {
+          SyncColumns.id: 'u1',
+          'name': 'Alice',
+          SyncColumns.createdAt: 1000,
+          SyncColumns.updatedAt: 1000,
+          SyncColumns.deletedAt: null,
+          SyncColumns.isSynced: 1,
+          SyncColumns.syncStatus: 'synced',
+        });
+        await adapter.upsert('users', {
+          SyncColumns.id: 'u1',
+          'name': 'Alicia',
+          SyncColumns.createdAt: 1000,
+          SyncColumns.updatedAt: 2000,
+          SyncColumns.deletedAt: null,
+          SyncColumns.isSynced: 1,
+          SyncColumns.syncStatus: 'synced',
+        });
+        final row = await adapter.getById('users', 'u1');
+        expect(row!['name'], 'Alicia');
+        expect(row[SyncColumns.updatedAt], 2000);
+      });
+
+      test('respects deleted_at column on upsert', () async {
+        final adapter = await openAdapter();
+        await adapter.upsert('users', {
+          SyncColumns.id: 'u1',
+          'name': 'Alice',
+          SyncColumns.createdAt: 1000,
+          SyncColumns.updatedAt: 1000,
+          SyncColumns.deletedAt: 5000,
+          SyncColumns.isSynced: 1,
+          SyncColumns.syncStatus: 'synced',
+        });
+        final row = await adapter.getById('users', 'u1');
+        expect(row![SyncColumns.deletedAt], 5000);
+      });
+
+      test('rolled back when transaction throws', () async {
+        final adapter = await openAdapter();
+        try {
+          await adapter.transaction(() async {
+            await adapter.upsert('users', {
+              SyncColumns.id: 'u1',
+              'name': 'Alice',
+              SyncColumns.createdAt: 1000,
+              SyncColumns.updatedAt: 1000,
+              SyncColumns.deletedAt: null,
+              SyncColumns.isSynced: 1,
+              SyncColumns.syncStatus: 'synced',
+            });
+            throw StateError('rollback');
+          });
+        } on StateError {
+          // expected
+        }
+        expect(await adapter.getById('users', 'u1'), isNull);
       });
     });
   });

@@ -55,6 +55,18 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
   }
 
   @override
+  Future<void> upsert(String table, Map<String, dynamic> data) async {
+    final rows =
+        _tables.putIfAbsent(table, () => <String, Map<String, dynamic>>{});
+    final id = data[SyncColumns.id] as String;
+    if (rows.containsKey(id)) {
+      rows[id]!.addAll(data);
+    } else {
+      rows[id] = Map<String, dynamic>.from(data);
+    }
+  }
+
+  @override
   Future<Map<String, dynamic>?> getById(String table, String id) async {
     final row = _tables[table]?[id];
     if (row == null) return null;
