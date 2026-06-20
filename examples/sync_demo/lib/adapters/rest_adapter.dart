@@ -89,30 +89,5 @@ class RestSyncAdapter implements RemoteSyncAdapter {
     return rows.map(Map<String, dynamic>.from).toList();
   }
 
-  /// Pull also returns the server time; useful for watermarking lastSync.
-  Future<({List<Map<String, dynamic>> rows, DateTime serverTime})>
-      pullChangesWithTime(String table, DateTime? since) async {
-    final qp = since == null
-        ? <String, String>{}
-        : {'since': since.toUtc().millisecondsSinceEpoch.toString()};
-    final endpoint = baseUrl.resolve('/sync/$table').replace(
-          queryParameters: qp.isEmpty ? null : qp,
-        );
-    final res = await _client.get(endpoint);
-    if (res.statusCode >= 400) {
-      throw SyncPullException(
-        table: table,
-        cause: 'HTTP ${res.statusCode}: ${res.body}',
-      );
-    }
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    final rows = (body['rows'] as List).cast<Map<String, dynamic>>();
-    final serverTime = DateTime.fromMillisecondsSinceEpoch(
-      body['server_time'] as int,
-      isUtc: true,
-    );
-    return (rows: rows.map(Map<String, dynamic>.from).toList(), serverTime: serverTime);
-  }
-
   void close() => _client.close();
 }

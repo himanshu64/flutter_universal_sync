@@ -55,9 +55,6 @@ class SqfliteSyncAdapter implements LocalDatabaseAdapter {
           )
         ''');
         await db.execute(
-          'CREATE TABLE sync_state (table_name TEXT PRIMARY KEY NOT NULL, last_sync INTEGER NOT NULL)',
-        );
-        await db.execute(
           'CREATE TABLE ${SyncMetaColumns.tableName} '
           '(${SyncMetaColumns.key} TEXT PRIMARY KEY NOT NULL, '
           '${SyncMetaColumns.value} TEXT NOT NULL)',
@@ -344,35 +341,6 @@ class SqfliteSyncAdapter implements LocalDatabaseAdapter {
         );
       }
     }
-  }
-
-  // ── demo extras: per-table lastSync persistence ─────────────────────
-
-  /// Returns the last-sync timestamp for [table], or null if never synced.
-  Future<DateTime?> lastSync(String table) async {
-    final rows = await _database.query(
-      'sync_state',
-      where: 'table_name = ?',
-      whereArgs: [table],
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-    return DateTime.fromMillisecondsSinceEpoch(
-      rows.first['last_sync'] as int,
-      isUtc: true,
-    );
-  }
-
-  /// Persists [time] as the last-sync watermark for [table].
-  Future<void> setLastSync(String table, DateTime time) async {
-    await _database.insert(
-      'sync_state',
-      {
-        'table_name': table,
-        'last_sync': time.toUtc().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
   }
 
   Map<String, Object?> _encodeForRow(Map<String, dynamic> data) {
