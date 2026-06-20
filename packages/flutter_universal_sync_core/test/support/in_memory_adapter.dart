@@ -175,6 +175,18 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
   }
 
   @override
+  Future<List<SyncQueueEntry>> pendingForEntity(
+    String table,
+    String entityId,
+  ) async {
+    final filtered = _queue
+        .where((e) => !e.synced && e.table == table && e.entityId == entityId)
+        .toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return filtered;
+  }
+
+  @override
   Future<String?> getMeta(String key) async => _meta[key];
 
   @override

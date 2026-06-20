@@ -65,6 +65,12 @@ abstract class LocalDatabaseAdapter {
   /// Atomic with respect to [transaction]. Added in 0.2.0.
   Future<void> deleteMeta(String key);
 
+  /// Returns unsynced queue entries for the row identified by
+  /// (`table`, `entityId`), ordered by `created_at` ASC. Used by the
+  /// engine's pull pipeline to detect pending local edits that conflict
+  /// with an incoming remote row. Added in 0.2.0.
+  Future<List<SyncQueueEntry>> pendingForEntity(String table, String entityId);
+
   /// Returns the row with the given id, or `null` if it does not exist.
   /// Soft-deleted rows are returned (inspect `deleted_at` to detect).
   Future<Map<String, dynamic>?> getById(String table, String id);

@@ -543,5 +543,61 @@ void runLocalDatabaseAdapterContract({
         expect(reloaded.nextRetryAt, isNull);
       });
     });
+
+    group('pendingForEntity (0.2.0)', () {
+      final t0 = DateTime.utc(2026, 1, 1, 12);
+      Future<void> seed(LocalDatabaseAdapter adapter) async {
+        Future<void> enqueue(String qid, String table, String entityId,
+                {bool synced = false, int seconds = 0,}) =>
+            adapter.enqueueSync(SyncQueueEntry(
+              id: qid,
+              table: table,
+              entityId: entityId,
+              operation: SyncOperation.update,
+              payload: {'id': entityId},
+              createdAt: t0.add(Duration(seconds: seconds)),
+              synced: synced,
+            ),);
+        await enqueue('q1', 'users', 'u1', seconds: 0);
+        await enqueue('q2', 'users', 'u1', seconds: 1);
+        await enqueue('q3', 'users', 'u2', seconds: 0);
+        await enqueue('q4', 'users', 'u1', synced: true, seconds: 2);
+        await enqueue('q5', 'orders', 'u1', seconds: 0);
+      }
+
+      test('returns only unsynced entries for the given (table, entity)',
+          () async {
+        final adapter = await openAdapter();
+        await seed(adapter);
+        final entries = await adapter.pendingForEntity('users', 'u1');
+        expect(entries.map((e) => e.id), ['q1', 'q2']);
+      });
+
+      test('returns empty list when no entries exist', () async {
+        final adapter = await openAdapter();
+        await seed(adapter);
+        final entries = await adapter.pendingForEntity('users', 'absent');
+        expect(entries, isEmpty);
+      });
+
+      test('isolates by table', () async {
+        final adapter = await openAdapter();
+        await seed(adapter);
+        final entries = await adapter.pendingForEntity('orders', 'u1');
+        expect(entries.map((e) => e.id), ['q5']);
+      });
+
+      test('orders by created_at ASC', () async {
+        final adapter = await openAdapter();
+        await seed(adapter);
+        final entries = await adapter.pendingForEntity('users', 'u1');
+        for (var i = 1; i < entries.length; i++) {
+          expect(
+            entries[i].createdAt.isBefore(entries[i - 1].createdAt),
+            isFalse,
+          );
+        }
+      });
+    });
   });
 }
