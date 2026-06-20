@@ -27,8 +27,30 @@ your app ─▶ repository ─▶ LocalDatabaseAdapter (sqflite / drift / hive /
 |---|---|---|
 | [`flutter_universal_sync_core`](packages/flutter_universal_sync_core/) | Contracts: `SyncEntity`, adapter interfaces, conflict resolvers, schema, errors, shared contract test-suite | 0.2.0 |
 | [`flutter_universal_sync_engine`](packages/flutter_universal_sync_engine/) | The orchestration runtime: `SyncEngine`, push/pull pipelines, drain loop, state stream | 0.1.0 |
-| `flutter_universal_sync_background` | WorkManager / BGTaskScheduler wrapping (Plan 3) | not started |
-| adapter packages (sqflite, drift, firebase, supabase, rest, …) | Concrete `LocalDatabaseAdapter` / `RemoteSyncAdapter` impls | Plans 4–12 |
+| `flutter_universal_sync_background` | WorkManager / BGTaskScheduler wrapping (**Plan 3 — not started**) | — |
+
+### Local adapters (`LocalDatabaseAdapter`)
+
+All run core's shared `runLocalDatabaseAdapterContract` suite.
+
+| Package | Backend | Status |
+|---|---|---|
+| [`…_sqflite`](packages/flutter_universal_sync_sqflite/) | SQLite (sqflite_common) | 0.1.0 — contract-verified, 100% cov |
+| [`…_drift`](packages/flutter_universal_sync_drift/) | drift (raw SQL, no codegen) | 0.1.0 — contract-verified, 96% cov |
+| [`…_hive`](packages/flutter_universal_sync_hive/) | Hive | 0.1.0 — contract-verified, 98% cov |
+| [`…_objectbox`](packages/flutter_universal_sync_objectbox/) | ObjectBox | 0.1.0 — reference skeleton (needs codegen + native lib) |
+
+### Remote adapters (`RemoteSyncAdapter`)
+
+See [the remote-adapter spec](docs/superpowers/specs/2026-06-21-remote-adapters-design.md).
+
+| Package | Backend | Status |
+|---|---|---|
+| [`…_rest`](packages/flutter_universal_sync_rest/) | any REST/JSON API | 0.1.0 — mock + live (jsonplaceholder), 96% cov |
+| [`…_supabase`](packages/flutter_universal_sync_supabase/) | Supabase (PostgREST) | 0.1.0 — mock-tested, 100% cov |
+| [`…_appwrite`](packages/flutter_universal_sync_appwrite/) | Appwrite Databases | 0.1.0 — mock-tested, 100% cov |
+| [`…_graphql`](packages/flutter_universal_sync_graphql/) | any GraphQL API | 0.1.0 — mock + live (SpaceX), 100% cov |
+| [`…_firebase`](packages/flutter_universal_sync_firebase/) | Cloud Firestore (REST) | 0.1.0 — mock-tested, 98% cov |
 
 A runnable end-to-end example lives in [`examples/sync_demo`](examples/sync_demo/) (Flutter UI + demo-grade sqflite & REST adapters + the Node test backend in [`examples/test-backend`](examples/test-backend/)).
 
