@@ -1,0 +1,4 @@
+tags:
+  integration:
+    # Hits the live jsonplaceholder API; excluded from the default/coverage run.
+    skip: false
