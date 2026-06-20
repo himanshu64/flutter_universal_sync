@@ -115,5 +115,117 @@ void main() {
         throwsA(isA<ArgumentError>()),
       );
     });
+
+    group('nextRetryAt', () {
+      final t0 = DateTime.utc(2026, 1, 1, 12, 0, 0);
+      final retryAt = DateTime.utc(2026, 1, 1, 12, 0, 30);
+
+      test('defaults to null', () {
+        final entry = SyncQueueEntry(
+          id: 'q1',
+          table: 'users',
+          entityId: 'u1',
+          operation: SyncOperation.update,
+          payload: const {'id': 'u1', 'name': 'Alice'},
+          createdAt: t0,
+        );
+        expect(entry.nextRetryAt, isNull);
+      });
+
+      test('round-trips through toMap / fromMap as epoch ms', () {
+        final entry = SyncQueueEntry(
+          id: 'q1',
+          table: 'users',
+          entityId: 'u1',
+          operation: SyncOperation.update,
+          payload: const {'id': 'u1'},
+          createdAt: t0,
+          nextRetryAt: retryAt,
+        );
+        final map = entry.toMap();
+        expect(map['next_retry_at'], retryAt.millisecondsSinceEpoch);
+        final restored = SyncQueueEntry.fromMap(map);
+        expect(restored.nextRetryAt, retryAt);
+      });
+
+      test('toMap encodes null as null (not absent key)', () {
+        final entry = SyncQueueEntry(
+          id: 'q1',
+          table: 'users',
+          entityId: 'u1',
+          operation: SyncOperation.insert,
+          payload: const {'id': 'u1'},
+          createdAt: t0,
+        );
+        final map = entry.toMap();
+        expect(map.containsKey('next_retry_at'), isTrue);
+        expect(map['next_retry_at'], isNull);
+      });
+
+      test('fromMap accepts missing key (back-compat with 0.1.0 maps)', () {
+        final map = <String, dynamic>{
+          'id': 'q1',
+          'table': 'users',
+          'entity_id': 'u1',
+          'operation': 'update',
+          'payload': <String, dynamic>{'id': 'u1'},
+          'created_at': t0.millisecondsSinceEpoch,
+          'retry_count': 0,
+          'last_error': null,
+          'synced': 0,
+        };
+        final entry = SyncQueueEntry.fromMap(map);
+        expect(entry.nextRetryAt, isNull);
+      });
+
+      test('copyWith replaces nextRetryAt; explicit null clears it', () {
+        final base = SyncQueueEntry(
+          id: 'q1',
+          table: 'users',
+          entityId: 'u1',
+          operation: SyncOperation.update,
+          payload: const {'id': 'u1'},
+          createdAt: t0,
+          nextRetryAt: retryAt,
+        );
+        final cleared = base.copyWith(nextRetryAt: null);
+        expect(cleared.nextRetryAt, isNull);
+        final later = DateTime.utc(2026, 1, 1, 12, 5, 0);
+        final replaced = base.copyWith(nextRetryAt: later);
+        expect(replaced.nextRetryAt, later);
+      });
+
+      test('copyWith without nextRetryAt preserves existing value', () {
+        final base = SyncQueueEntry(
+          id: 'q1',
+          table: 'users',
+          entityId: 'u1',
+          operation: SyncOperation.update,
+          payload: const {'id': 'u1'},
+          createdAt: t0,
+          nextRetryAt: retryAt,
+        );
+        final unchanged = base.copyWith(retryCount: 5);
+        expect(unchanged.nextRetryAt, retryAt);
+      });
+
+      test('equality and hashCode include nextRetryAt', () {
+        final a = SyncQueueEntry(
+          id: 'q1',
+          table: 'users',
+          entityId: 'u1',
+          operation: SyncOperation.update,
+          payload: const {'id': 'u1'},
+          createdAt: t0,
+          nextRetryAt: retryAt,
+        );
+        final b = a.copyWith(nextRetryAt: DateTime.utc(2026, 1, 1, 12, 0, 31));
+        expect(a == b, isFalse);
+        expect(a.hashCode == b.hashCode, isFalse);
+        final c = a.copyWith(nextRetryAt: retryAt);
+        expect(a == c, isTrue);
+        expect(a.hashCode, c.hashCode);
+      });
+    });
   });
 }

@@ -4,6 +4,10 @@ import 'sync_operation.dart';
 // from an explicit `null` for the [SyncQueueEntry.lastError] parameter.
 const Object _unset = Object();
 
+// Sentinel used by [SyncQueueEntry.copyWith] to distinguish "not provided"
+// from an explicit `null` for the [SyncQueueEntry.nextRetryAt] parameter.
+const Object _unsetRetryAt = Object();
+
 /// One queued local mutation awaiting push to a remote backend.
 ///
 /// Per-op queue: each [insert]/[update]/[delete] on the repository produces
@@ -34,6 +38,7 @@ class SyncQueueEntry {
     this.retryCount = 0,
     this.lastError,
     this.synced = false,
+    this.nextRetryAt,
   });
 
   /// UUID of this queue row. Distinct from [entityId].
@@ -63,6 +68,12 @@ class SyncQueueEntry {
   /// `true` after the remote adapter has acknowledged the push.
   final bool synced;
 
+  /// When this entry becomes eligible to retry, or `null` if it is
+  /// either fresh (never failed) or eligible immediately. Set by the
+  /// sync engine using its backoff function. Filtered against by
+  /// [LocalDatabaseAdapter.pendingSyncEntries]'s `readyAt` parameter.
+  final DateTime? nextRetryAt;
+
   /// Returns a copy with the listed fields replaced.
   ///
   /// Passing `lastError: null` explicitly clears the field to `null`.
@@ -73,6 +84,7 @@ class SyncQueueEntry {
     int? retryCount,
     Object? lastError = _unset,
     bool? synced,
+    Object? nextRetryAt = _unsetRetryAt,
   }) =>
       SyncQueueEntry(
         id: id,
@@ -86,6 +98,9 @@ class SyncQueueEntry {
             ? this.lastError
             : lastError as String?,
         synced: synced ?? this.synced,
+        nextRetryAt: identical(nextRetryAt, _unsetRetryAt)
+            ? this.nextRetryAt
+            : nextRetryAt as DateTime?,
       );
 
   /// Serializes for persistence. `operation` becomes a stable name string;
@@ -100,6 +115,7 @@ class SyncQueueEntry {
         'retry_count': retryCount,
         'last_error': lastError,
         'synced': synced ? 1 : 0,
+        'next_retry_at': nextRetryAt?.toUtc().millisecondsSinceEpoch,
       };
 
   /// Reconstructs from a map produced by [toMap].
@@ -130,6 +146,12 @@ class SyncQueueEntry {
       retryCount: (m['retry_count'] as int?) ?? 0,
       lastError: m['last_error'] as String?,
       synced: (m['synced'] as int?) == 1,
+      nextRetryAt: m['next_retry_at'] == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(
+              m['next_retry_at'] as int,
+              isUtc: true,
+            ),
     );
   }
 
@@ -145,7 +167,8 @@ class SyncQueueEntry {
           createdAt == other.createdAt &&
           retryCount == other.retryCount &&
           lastError == other.lastError &&
-          synced == other.synced;
+          synced == other.synced &&
+          nextRetryAt == other.nextRetryAt;
 
   @override
   int get hashCode => Object.hash(
@@ -162,6 +185,7 @@ class SyncQueueEntry {
         retryCount,
         lastError,
         synced,
+        nextRetryAt,
       );
 }
 
