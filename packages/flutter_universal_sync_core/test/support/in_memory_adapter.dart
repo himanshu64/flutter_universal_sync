@@ -187,6 +187,16 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
   }
 
   @override
+  Future<void> rewriteQueuePayload(
+    String entryId,
+    Map<String, dynamic> payload,
+  ) async {
+    final i = _queue.indexWhere((e) => e.id == entryId);
+    if (i < 0) throw StateError('Queue entry $entryId not found');
+    _queue[i] = _queue[i].copyWith(payload: Map<String, dynamic>.from(payload));
+  }
+
+  @override
   Future<String?> getMeta(String key) async => _meta[key];
 
   @override

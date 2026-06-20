@@ -599,5 +599,59 @@ void runLocalDatabaseAdapterContract({
         }
       });
     });
+
+    group('rewriteQueuePayload (0.2.0)', () {
+      Future<void> seed(LocalDatabaseAdapter adapter) async {
+        await adapter.enqueueSync(SyncQueueEntry(
+          id: 'q1',
+          table: 'users',
+          entityId: 'u1',
+          operation: SyncOperation.update,
+          payload: const {'id': 'u1', 'name': 'A'},
+          createdAt: DateTime.utc(2026, 1, 1, 12),
+          retryCount: 2,
+          lastError: 'previous-err',
+        ),);
+      }
+
+      Future<SyncQueueEntry> reload(LocalDatabaseAdapter adapter) async {
+        final all = await adapter.pendingSyncEntries();
+        return all.firstWhere((e) => e.id == 'q1');
+      }
+
+      test('replaces payload only', () async {
+        final adapter = await openAdapter();
+        await seed(adapter);
+        await adapter.rewriteQueuePayload('q1', {'id': 'u1', 'name': 'B'});
+        final reloaded = await reload(adapter);
+        expect(reloaded.payload, {'id': 'u1', 'name': 'B'});
+        expect(reloaded.retryCount, 2);
+        expect(reloaded.lastError, 'previous-err');
+        expect(reloaded.operation, SyncOperation.update);
+      });
+
+      test('throws StateError when entryId is unknown', () async {
+        final adapter = await openAdapter();
+        expect(
+          () => adapter.rewriteQueuePayload('absent', const {'id': 'x'}),
+          throwsStateError,
+        );
+      });
+
+      test('rolled back when transaction throws', () async {
+        final adapter = await openAdapter();
+        await seed(adapter);
+        try {
+          await adapter.transaction(() async {
+            await adapter.rewriteQueuePayload('q1', {'id': 'u1', 'name': 'TX'});
+            throw StateError('rollback');
+          });
+        } on StateError {
+          // expected
+        }
+        final reloaded = await reload(adapter);
+        expect(reloaded.payload, {'id': 'u1', 'name': 'A'});
+      });
+    });
   });
 }

@@ -71,6 +71,15 @@ abstract class LocalDatabaseAdapter {
   /// with an incoming remote row. Added in 0.2.0.
   Future<List<SyncQueueEntry>> pendingForEntity(String table, String entityId);
 
+  /// Replaces the payload of the queue entry [entryId] with [payload].
+  /// Other fields (retry_count, last_error, operation, created_at,
+  /// next_retry_at, synced) are untouched. Throws [StateError] if no
+  /// such entry exists. Atomic with [transaction]. Added in 0.2.0.
+  Future<void> rewriteQueuePayload(
+    String entryId,
+    Map<String, dynamic> payload,
+  );
+
   /// Returns the row with the given id, or `null` if it does not exist.
   /// Soft-deleted rows are returned (inspect `deleted_at` to detect).
   Future<Map<String, dynamic>?> getById(String table, String id);
