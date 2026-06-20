@@ -11,6 +11,9 @@ dependencies:
     sdk: flutter
   flutter_universal_sync_core:
     path: ../../packages/flutter_universal_sync_core
+  flutter_universal_sync_engine:
+    path: ../../packages/flutter_universal_sync_engine
+  connectivity_plus: ^6.0.0
   http: ^1.2.2
   path: ^1.9.0
   path_provider: ^2.1.4
@@ -21,6 +24,13 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+
+# The engine depends on flutter_universal_sync_core ^0.2.0 from pub.dev,
+# but in this monorepo both packages are unpublished path deps. Pin core
+# to the local path so the engine's transitive dependency resolves here.
+dependency_overrides:
+  flutter_universal_sync_core:
+    path: ../../packages/flutter_universal_sync_core
 
 flutter:
   uses-material-design: true
