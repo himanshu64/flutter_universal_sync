@@ -40,4 +40,39 @@ void main() {
       expect(SyncColumns.types[SyncColumns.deletedAt], 'INTEGER');
     });
   });
+
+  group('SyncMetaColumns', () {
+    test('exposes table and column names', () {
+      expect(SyncMetaColumns.tableName, '_sync_meta');
+      expect(SyncMetaColumns.key, 'key');
+      expect(SyncMetaColumns.value, 'value');
+    });
+
+    test('required lists every column in canonical order', () {
+      expect(
+        SyncMetaColumns.required,
+        const ['key', 'value'],
+      );
+    });
+
+    test('types map covers every required column', () {
+      for (final col in SyncMetaColumns.required) {
+        expect(
+          SyncMetaColumns.types.containsKey(col),
+          isTrue,
+          reason: 'types missing entry for $col',
+        );
+      }
+      expect(SyncMetaColumns.types['key'], 'TEXT NOT NULL PRIMARY KEY');
+      expect(SyncMetaColumns.types['value'], 'TEXT NOT NULL');
+    });
+
+    test('SyncColumns adds nextRetryAt to the queue-table column space', () {
+      expect(SyncColumns.nextRetryAt, 'next_retry_at');
+      expect(
+        SyncColumns.queueTypes[SyncColumns.nextRetryAt],
+        'INTEGER',
+      );
+    });
+  });
 }
