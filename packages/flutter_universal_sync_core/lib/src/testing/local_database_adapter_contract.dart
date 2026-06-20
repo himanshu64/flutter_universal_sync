@@ -365,5 +365,54 @@ void runLocalDatabaseAdapterContract({
         expect(await adapter.getById('users', 'u1'), isNull);
       });
     });
+
+    group('meta KV (0.2.0)', () {
+      test('getMeta returns null for missing key', () async {
+        final adapter = await openAdapter();
+        expect(await adapter.getMeta('does_not_exist'), isNull);
+      });
+
+      test('setMeta then getMeta round-trips', () async {
+        final adapter = await openAdapter();
+        await adapter.setMeta('pull_cursor:users', '2026-01-01T00:00:00.000Z');
+        expect(
+          await adapter.getMeta('pull_cursor:users'),
+          '2026-01-01T00:00:00.000Z',
+        );
+      });
+
+      test('setMeta overwrites existing value', () async {
+        final adapter = await openAdapter();
+        await adapter.setMeta('k', 'v1');
+        await adapter.setMeta('k', 'v2');
+        expect(await adapter.getMeta('k'), 'v2');
+      });
+
+      test('deleteMeta removes the key', () async {
+        final adapter = await openAdapter();
+        await adapter.setMeta('k', 'v');
+        await adapter.deleteMeta('k');
+        expect(await adapter.getMeta('k'), isNull);
+      });
+
+      test('deleteMeta on missing key is a no-op', () async {
+        final adapter = await openAdapter();
+        await adapter.deleteMeta('missing'); // must not throw
+      });
+
+      test('setMeta inside transaction rolls back on throw', () async {
+        final adapter = await openAdapter();
+        await adapter.setMeta('k', 'before');
+        try {
+          await adapter.transaction(() async {
+            await adapter.setMeta('k', 'after');
+            throw StateError('rollback');
+          });
+        } on StateError {
+          // expected
+        }
+        expect(await adapter.getMeta('k'), 'before');
+      });
+    });
   });
 }

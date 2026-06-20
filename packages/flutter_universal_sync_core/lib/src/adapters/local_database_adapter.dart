@@ -53,6 +53,18 @@ abstract class LocalDatabaseAdapter {
   /// Added in 0.2.0 for the engine's pull pipeline.
   Future<void> upsert(String table, Map<String, dynamic> data);
 
+  /// Reads the value for [key] from the engine's `_sync_meta` KV table,
+  /// or `null` if the key does not exist. Added in 0.2.0.
+  Future<String?> getMeta(String key);
+
+  /// Inserts or replaces the value for [key] in `_sync_meta`. Atomic
+  /// with respect to [transaction]; rolled back on throw. Added in 0.2.0.
+  Future<void> setMeta(String key, String value);
+
+  /// Removes [key] from `_sync_meta`. No-op if the key does not exist.
+  /// Atomic with respect to [transaction]. Added in 0.2.0.
+  Future<void> deleteMeta(String key);
+
   /// Returns the row with the given id, or `null` if it does not exist.
   /// Soft-deleted rows are returned (inspect `deleted_at` to detect).
   Future<Map<String, dynamic>?> getById(String table, String id);

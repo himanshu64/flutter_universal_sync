@@ -11,6 +11,7 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
   final Map<String, Map<String, Map<String, dynamic>>> _tables = {};
   final Map<String, Set<String>> _schemas = {};
   final List<SyncQueueEntry> _queue = [];
+  final Map<String, String> _meta = {};
 
   /// Registers [columns] as the schema for [table]. Tests call this
   /// before [validateSchema] to simulate user-declared tables.
@@ -122,6 +123,7 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
         },
     };
     final queueSnapshot = List<SyncQueueEntry>.from(_queue);
+    final metaSnapshot = Map<String, String>.from(_meta);
     try {
       return await action();
     } catch (_) {
@@ -131,6 +133,9 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
       _queue
         ..clear()
         ..addAll(queueSnapshot);
+      _meta
+        ..clear()
+        ..addAll(metaSnapshot);
       rethrow;
     }
   }
@@ -148,6 +153,19 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
         );
       }
     }
+  }
+
+  @override
+  Future<String?> getMeta(String key) async => _meta[key];
+
+  @override
+  Future<void> setMeta(String key, String value) async {
+    _meta[key] = value;
+  }
+
+  @override
+  Future<void> deleteMeta(String key) async {
+    _meta.remove(key);
   }
 }
 
