@@ -9,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'adapters/connectivity_plus_monitor.dart';
 import 'adapters/rest_adapter.dart';
 import 'adapters/sqflite_adapter.dart';
-import 'dev/db_viewer.dart';
+import 'dev/database_inspector.dart';
 import 'repository.dart';
 import 'thing.dart';
 
@@ -81,19 +81,20 @@ class _HomePageState extends State<HomePage> {
     );
     await engine.start();
 
-    // Dev-only: start an embedded DB viewer and log its URL on launch.
-    final dbViewer = DbViewerServer(
+    // Dev-only: start the embedded Database Inspector and log its URL.
+    final dbInspector = DatabaseInspectorServer(
       tables: const ['things', 'sync_queue', SyncMetaColumns.tableName],
       query: local.debugRows,
+      runSql: local.debugQuery,
     );
-    final url = await dbViewer.start();
-    debugPrint('📊 DB viewer running at $url  (open in a browser)');
+    final url = await dbInspector.start();
+    debugPrint('🔍 Database Inspector running at $url  (open in a browser)');
 
     return AppState(
       repository: repository,
       engine: engine,
       connectivity: connectivity,
-      dbViewer: dbViewer,
+      dbInspector: dbInspector,
     );
   }
 
@@ -129,12 +130,12 @@ class AppState {
     required this.repository,
     required this.engine,
     required this.connectivity,
-    required this.dbViewer,
+    required this.dbInspector,
   });
   final ThingRepository repository;
   final SyncEngine engine;
   final ConnectivityPlusMonitor connectivity;
-  final DbViewerServer dbViewer;
+  final DatabaseInspectorServer dbInspector;
 }
 
 class ThingsPage extends StatefulWidget {

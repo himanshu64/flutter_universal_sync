@@ -343,9 +343,14 @@ class SqfliteSyncAdapter implements LocalDatabaseAdapter {
     }
   }
 
-  /// Dev-only: returns every row of [table] verbatim, for the DB viewer.
+  /// Dev-only: returns every row of [table] verbatim, for the inspector.
   Future<List<Map<String, Object?>>> debugRows(String table) =>
       _database.query(table);
+
+  /// Dev-only: runs a read-only [sql] statement for the inspector's SQL
+  /// runner. The caller (the inspector) guards against non-SELECT SQL.
+  Future<List<Map<String, Object?>>> debugQuery(String sql) =>
+      _database.rawQuery(sql);
 
   Map<String, Object?> _encodeForRow(Map<String, dynamic> data) {
     // sqflite accepts only num/String/null/Uint8List as bind values.
