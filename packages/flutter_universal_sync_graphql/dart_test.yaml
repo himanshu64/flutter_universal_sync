@@ -1,0 +1,4 @@
+tags:
+  integration:
+    # Hits the live SpaceX GraphQL API; excluded from the default/coverage run.
+    skip: false
