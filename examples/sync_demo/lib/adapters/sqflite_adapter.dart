@@ -27,7 +27,7 @@ class SqfliteSyncAdapter implements LocalDatabaseAdapter {
   Future<void> init() async {
     _db = await openDatabase(
       dbPath,
-      version: 1,
+      version: 2,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE things (
@@ -50,13 +50,32 @@ class SqfliteSyncAdapter implements LocalDatabaseAdapter {
             created_at INTEGER NOT NULL,
             retry_count INTEGER NOT NULL DEFAULT 0,
             last_error TEXT,
-            synced INTEGER NOT NULL DEFAULT 0
+            synced INTEGER NOT NULL DEFAULT 0,
+            next_retry_at INTEGER
           )
         ''');
         await db.execute(
           'CREATE TABLE sync_state (table_name TEXT PRIMARY KEY NOT NULL, last_sync INTEGER NOT NULL)',
         );
+        await db.execute(
+          'CREATE TABLE ${SyncMetaColumns.tableName} '
+          '(${SyncMetaColumns.key} TEXT PRIMARY KEY NOT NULL, '
+          '${SyncMetaColumns.value} TEXT NOT NULL)',
+        );
         await db.execute('CREATE INDEX queue_synced ON sync_queue(synced)');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // 0.1.0 → 0.2.0 engine-support migration (spec §4).
+        if (oldVersion < 2) {
+          await db.execute(
+            'ALTER TABLE sync_queue ADD COLUMN next_retry_at INTEGER',
+          );
+          await db.execute(
+            'CREATE TABLE IF NOT EXISTS ${SyncMetaColumns.tableName} '
+            '(${SyncMetaColumns.key} TEXT PRIMARY KEY NOT NULL, '
+            '${SyncMetaColumns.value} TEXT NOT NULL)',
+          );
+        }
       },
     );
   }
@@ -108,6 +127,15 @@ class SqfliteSyncAdapter implements LocalDatabaseAdapter {
   }
 
   @override
+  Future<void> upsert(String table, Map<String, dynamic> data) async {
+    await _database.insert(
+      table,
+      _encodeForRow(data),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  @override
   Future<Map<String, dynamic>?> getById(String table, String id) async {
     final rows = await _database.query(
       table,
@@ -143,18 +171,46 @@ class SqfliteSyncAdapter implements LocalDatabaseAdapter {
         'retry_count': entry.retryCount,
         'last_error': entry.lastError,
         'synced': entry.synced ? 1 : 0,
+        'next_retry_at': entry.nextRetryAt?.toUtc().millisecondsSinceEpoch,
       },
       conflictAlgorithm: ConflictAlgorithm.abort,
     );
   }
 
   @override
-  Future<List<SyncQueueEntry>> pendingSyncEntries({int? limit}) async {
+  Future<List<SyncQueueEntry>> pendingSyncEntries({
+    int? limit,
+    DateTime? readyAt,
+  }) async {
+    final String where;
+    final List<Object?> whereArgs;
+    if (readyAt == null) {
+      where = 'synced = 0';
+      whereArgs = const [];
+    } else {
+      where = 'synced = 0 AND (next_retry_at IS NULL OR next_retry_at <= ?)';
+      whereArgs = [readyAt.toUtc().millisecondsSinceEpoch];
+    }
     final rows = await _database.query(
       'sync_queue',
-      where: 'synced = 0',
+      where: where,
+      whereArgs: whereArgs.isEmpty ? null : whereArgs,
       orderBy: 'created_at ASC',
       limit: limit,
+    );
+    return rows.map(_queueFromRow).toList();
+  }
+
+  @override
+  Future<List<SyncQueueEntry>> pendingForEntity(
+    String table,
+    String entityId,
+  ) async {
+    final rows = await _database.query(
+      'sync_queue',
+      where: 'synced = 0 AND table_name = ? AND entity_id = ?',
+      whereArgs: [table, entityId],
+      orderBy: 'created_at ASC',
     );
     return rows.map(_queueFromRow).toList();
   }
@@ -174,6 +230,12 @@ class SqfliteSyncAdapter implements LocalDatabaseAdapter {
         retryCount: r['retry_count'] as int? ?? 0,
         lastError: r['last_error'] as String?,
         synced: (r['synced'] as int? ?? 0) == 1,
+        nextRetryAt: r['next_retry_at'] == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(
+                r['next_retry_at'] as int,
+                isUtc: true,
+              ),
       );
 
   @override
@@ -190,16 +252,77 @@ class SqfliteSyncAdapter implements LocalDatabaseAdapter {
   }
 
   @override
-  Future<void> recordSyncFailure(String queueEntryId, String error) async {
-    final rows = await _database.update(
-      'sync_queue',
-      {'last_error': error},
-      where: 'id = ?',
-      whereArgs: [queueEntryId],
+  Future<void> recordSyncFailure(
+    String queueEntryId,
+    String error, {
+    DateTime? nextRetryAt,
+    bool incrementRetryCount = true,
+  }) async {
+    final setClauses = <String>[
+      'last_error = ?',
+      'next_retry_at = ?',
+    ];
+    final args = <Object?>[
+      error,
+      nextRetryAt?.toUtc().millisecondsSinceEpoch,
+    ];
+    if (incrementRetryCount) {
+      setClauses.add('retry_count = retry_count + 1');
+    }
+    // Use rawUpdate so retry_count can reference its own column.
+    final rows = await _database.rawUpdate(
+      'UPDATE sync_queue SET ${setClauses.join(', ')} WHERE id = ?',
+      [...args, queueEntryId],
     );
     if (rows == 0) {
       throw StateError('Queue entry $queueEntryId not found');
     }
+  }
+
+  @override
+  Future<void> rewriteQueuePayload(
+    String entryId,
+    Map<String, dynamic> payload,
+  ) async {
+    final rows = await _database.update(
+      'sync_queue',
+      {'payload': jsonEncode(payload)},
+      where: 'id = ?',
+      whereArgs: [entryId],
+    );
+    if (rows == 0) {
+      throw StateError('Queue entry $entryId not found');
+    }
+  }
+
+  @override
+  Future<String?> getMeta(String key) async {
+    final rows = await _database.query(
+      SyncMetaColumns.tableName,
+      columns: [SyncMetaColumns.value],
+      where: '${SyncMetaColumns.key} = ?',
+      whereArgs: [key],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.first[SyncMetaColumns.value] as String;
+  }
+
+  @override
+  Future<void> setMeta(String key, String value) async {
+    await _database.insert(
+      SyncMetaColumns.tableName,
+      {SyncMetaColumns.key: key, SyncMetaColumns.value: value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  @override
+  Future<void> deleteMeta(String key) async {
+    await _database.delete(
+      SyncMetaColumns.tableName,
+      where: '${SyncMetaColumns.key} = ?',
+      whereArgs: [key],
+    );
   }
 
   @override

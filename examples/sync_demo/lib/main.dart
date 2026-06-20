@@ -1,12 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_universal_sync_core/flutter_universal_sync_core.dart';
+import 'package:flutter_universal_sync_engine/flutter_universal_sync_engine.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'adapters/connectivity_plus_monitor.dart';
 import 'adapters/rest_adapter.dart';
 import 'adapters/sqflite_adapter.dart';
 import 'repository.dart';
-import 'sync_runner.dart';
 import 'thing.dart';
 
 /// Backend URL.
@@ -66,8 +69,21 @@ class _HomePageState extends State<HomePage> {
     await local.validateSchema(['things']);
     final remote = RestSyncAdapter(baseUrl: Uri.parse(_kBackendUrl));
     final repository = ThingRepository(local: local);
-    final runner = SyncRunner(local: local, remote: remote);
-    return AppState(repository: repository, runner: runner);
+    final connectivity = ConnectivityPlusMonitor();
+    final engine = SyncEngine(
+      localDb: local,
+      remote: remote,
+      connectivity: connectivity,
+      tables: const {
+        'things': TableConfig(conflictResolver: LastWriteWinsResolver()),
+      },
+    );
+    await engine.start();
+    return AppState(
+      repository: repository,
+      engine: engine,
+      connectivity: connectivity,
+    );
   }
 
   @override
@@ -98,9 +114,14 @@ class _HomePageState extends State<HomePage> {
 }
 
 class AppState {
-  AppState({required this.repository, required this.runner});
+  AppState({
+    required this.repository,
+    required this.engine,
+    required this.connectivity,
+  });
   final ThingRepository repository;
-  final SyncRunner runner;
+  final SyncEngine engine;
+  final ConnectivityPlusMonitor connectivity;
 }
 
 class ThingsPage extends StatefulWidget {
@@ -114,13 +135,34 @@ class ThingsPage extends StatefulWidget {
 class _ThingsPageState extends State<ThingsPage> {
   List<Thing> _items = [];
   bool _loading = true;
-  bool _syncing = false;
+  EngineStatus _status = EngineStatus.idle;
+  int _pendingCount = 0;
   String? _lastError;
+  StreamSubscription<SyncStateSnapshot>? _stateSub;
 
   @override
   void initState() {
     super.initState();
+    _stateSub = widget.state.engine.state.listen((snap) {
+      if (!mounted) return;
+      setState(() {
+        _status = snap.status;
+        _pendingCount = snap.pendingCount;
+        _lastError = snap.lastError;
+      });
+      // A finished cycle may have flipped local rows to synced; refresh
+      // so their cloud_done icons update.
+      if (snap.status == EngineStatus.idle) {
+        _refresh();
+      }
+    });
     _refresh();
+  }
+
+  @override
+  void dispose() {
+    _stateSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _refresh() async {
@@ -140,32 +182,16 @@ class _ThingsPageState extends State<ThingsPage> {
   }
 
   Future<void> _sync() async {
-    setState(() {
-      _syncing = true;
-      _lastError = null;
-    });
     try {
-      final outcome = await widget.state.runner.sync(ThingRepository.table);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Synced — pushed ${outcome.pushed}, pulled ${outcome.pulled}',
-            ),
-          ),
-        );
-      }
-      await _refresh();
+      await widget.state.engine.syncNow(pull: true);
     } catch (e) {
-      setState(() => _lastError = '$e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sync failed: $e')),
         );
       }
-    } finally {
-      if (mounted) setState(() => _syncing = false);
     }
+    await _refresh();
   }
 
   Future<void> _addItem() async {
@@ -191,7 +217,7 @@ class _ThingsPageState extends State<ThingsPage> {
   }
 
   Widget _statusIcon() {
-    if (_syncing) {
+    if (_status == EngineStatus.syncing) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
         child: SizedBox(
@@ -203,8 +229,10 @@ class _ThingsPageState extends State<ThingsPage> {
     }
     return IconButton(
       onPressed: _sync,
-      icon: const Icon(Icons.sync),
-      tooltip: 'Sync now',
+      icon: Icon(
+        _status == EngineStatus.error ? Icons.sync_problem : Icons.sync,
+      ),
+      tooltip: _pendingCount > 0 ? 'Sync now ($_pendingCount pending)' : 'Sync now',
     );
   }
 
