@@ -1,9 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter_universal_sync_engine/src/connectivity/connectivity_monitor.dart';
+import '../connectivity/connectivity_monitor.dart';
 
 /// Programmable [ConnectivityMonitor] for tests.
 class FakeConnectivityMonitor implements ConnectivityMonitor {
+  /// Creates a monitor seeded to [initial] online state.
   FakeConnectivityMonitor({bool initial = true}) : _isOnline = initial;
 
   bool _isOnline;

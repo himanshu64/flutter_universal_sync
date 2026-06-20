@@ -5,7 +5,7 @@ import 'package:flutter_universal_sync_engine/src/push/push_pipeline.dart';
 import 'package:test/test.dart';
 
 import '../support/fake_clock.dart';
-import '../support/fake_remote_sync_adapter.dart';
+import 'package:flutter_universal_sync_engine/testing.dart';
 
 void main() {
   test('entry with future next_retry_at is skipped', () async {

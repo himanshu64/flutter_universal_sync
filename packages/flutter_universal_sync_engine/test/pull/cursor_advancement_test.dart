@@ -5,7 +5,7 @@ import 'package:flutter_universal_sync_engine/src/meta/meta_keys.dart';
 import 'package:flutter_universal_sync_engine/src/pull/pull_pipeline.dart';
 import 'package:test/test.dart';
 
-import '../support/fake_remote_sync_adapter.dart';
+import 'package:flutter_universal_sync_engine/testing.dart';
 
 void main() {
   late InMemoryAdapter local;

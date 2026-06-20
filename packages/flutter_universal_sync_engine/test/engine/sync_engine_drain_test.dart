@@ -6,8 +6,7 @@ import 'package:flutter_universal_sync_engine/flutter_universal_sync_engine.dart
 import 'package:test/test.dart';
 
 import '../support/fake_clock.dart';
-import '../support/fake_connectivity_monitor.dart';
-import '../support/fake_remote_sync_adapter.dart';
+import 'package:flutter_universal_sync_engine/testing.dart';
 
 void main() {
   late InMemoryAdapter local;

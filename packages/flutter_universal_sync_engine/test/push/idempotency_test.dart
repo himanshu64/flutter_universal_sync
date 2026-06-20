@@ -5,7 +5,7 @@ import 'package:flutter_universal_sync_engine/src/push/push_pipeline.dart';
 import 'package:test/test.dart';
 
 import '../support/fake_clock.dart';
-import '../support/fake_remote_sync_adapter.dart';
+import 'package:flutter_universal_sync_engine/testing.dart';
 
 /// Documents the trade-off in spec §6.4: the push and the mark-synced
 /// are not bundled in one transaction. If the process dies between the
