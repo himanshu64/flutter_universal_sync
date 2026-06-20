@@ -1,7 +1,7 @@
 /// Engine-defined keys used in the `_sync_meta` KV table. Internal to
 /// the engine package; consumers do not read these directly.
 class MetaKeys {
-  MetaKeys._();
+  MetaKeys._(); // coverage:ignore-line
 
   /// Returns the per-table pull cursor key, e.g. `pull_cursor:users`.
   /// Cursor value is a `DateTime.toIso8601String()` of the most recent
