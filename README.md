@@ -27,7 +27,7 @@ your app ─▶ repository ─▶ LocalDatabaseAdapter (sqflite / drift / hive /
 |---|---|---|
 | [`flutter_universal_sync_core`](packages/flutter_universal_sync_core/) | Contracts: `SyncEntity`, adapter interfaces, conflict resolvers, schema, errors, shared contract test-suite | 0.2.0 |
 | [`flutter_universal_sync_engine`](packages/flutter_universal_sync_engine/) | The orchestration runtime: `SyncEngine`, push/pull pipelines, drain loop, state stream | 0.1.0 |
-| `flutter_universal_sync_background` | WorkManager / BGTaskScheduler wrapping (**Plan 3 — not started**) | — |
+| [`flutter_universal_sync_background`](packages/flutter_universal_sync_background/) | Headless background sync (WorkManager / BGTaskScheduler) — Plan 3 | 0.1.0 |
 
 ### Local adapters (`LocalDatabaseAdapter`)
 

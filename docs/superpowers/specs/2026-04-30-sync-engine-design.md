@@ -601,7 +601,7 @@ Plan 2 is complete when all of the following are true:
 ## 13. Cross-References
 
 - **Predecessor:** [`flutter_universal_sync_core` v1 design](./2026-04-24-flutter-universal-sync-core-design.md).
-- **Predecessor plan:** [`flutter_universal_sync_core` v1 implementation plan](../plans/2026-04-24-flutter-universal-sync-core-plan.md).
+- **Predecessor plan:** core v1 implementation plan — executed and shipped in `packages/flutter_universal_sync_core/` (plan file removed once complete).
 - **Brainstorming decisions for this spec:** 11 design questions, all user-approved before this doc was written:
   1. Lifecycle model → C (hybrid: `start`/`stop` + `syncNow`).
   2. Connectivity integration → A (injected `ConnectivityMonitor` interface, pure-Dart engine).
@@ -614,5 +614,5 @@ Plan 2 is complete when all of the following are true:
   9. Snapshot stream API → C (full `SyncStateSnapshot` on every transition).
   10. Threading → main isolate only; Plan 3 owns background isolation.
   11. Constructor shape → B (named-arg constructor with `tables: Map<String, TableConfig>`).
-- **Immediate next plan:** [`flutter_universal_sync_engine` v1 implementation plan] (to be authored next, sibling to this spec under `docs/superpowers/plans/`).
-- **Eventual next spec:** Plan 3 — background sync (WorkManager + BGTaskScheduler + isolate-aware engine wiring).
+- **Implementation:** this spec is fully implemented in `packages/flutter_universal_sync_engine/` (the step-by-step plan was executed and its file removed once complete).
+- **Plan 3 — background sync:** designed and shipped — see [background-sync design](./2026-06-21-background-sync-design.md) and `packages/flutter_universal_sync_background/`.
