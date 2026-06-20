@@ -289,7 +289,7 @@ void runLocalDatabaseAdapterContract({
     group('upsert (0.2.0)', () {
       test('inserts when row does not exist', () async {
         final adapter = await openAdapter();
-        await adapter.upsert('users', {
+        await adapter.upsert('things', {
           SyncColumns.id: 'u1',
           'name': 'Alice',
           SyncColumns.createdAt: 1000,
@@ -298,7 +298,7 @@ void runLocalDatabaseAdapterContract({
           SyncColumns.isSynced: 1,
           SyncColumns.syncStatus: 'synced',
         });
-        final row = await adapter.getById('users', 'u1');
+        final row = await adapter.getById('things', 'u1');
         expect(row, isNotNull);
         expect(row![SyncColumns.id], 'u1');
         expect(row['name'], 'Alice');
@@ -306,7 +306,7 @@ void runLocalDatabaseAdapterContract({
 
       test('updates when row exists, replacing payload fields', () async {
         final adapter = await openAdapter();
-        await adapter.insert('users', {
+        await adapter.insert('things', {
           SyncColumns.id: 'u1',
           'name': 'Alice',
           SyncColumns.createdAt: 1000,
@@ -315,7 +315,7 @@ void runLocalDatabaseAdapterContract({
           SyncColumns.isSynced: 1,
           SyncColumns.syncStatus: 'synced',
         });
-        await adapter.upsert('users', {
+        await adapter.upsert('things', {
           SyncColumns.id: 'u1',
           'name': 'Alicia',
           SyncColumns.createdAt: 1000,
@@ -324,14 +324,14 @@ void runLocalDatabaseAdapterContract({
           SyncColumns.isSynced: 1,
           SyncColumns.syncStatus: 'synced',
         });
-        final row = await adapter.getById('users', 'u1');
+        final row = await adapter.getById('things', 'u1');
         expect(row!['name'], 'Alicia');
         expect(row[SyncColumns.updatedAt], 2000);
       });
 
       test('respects deleted_at column on upsert', () async {
         final adapter = await openAdapter();
-        await adapter.upsert('users', {
+        await adapter.upsert('things', {
           SyncColumns.id: 'u1',
           'name': 'Alice',
           SyncColumns.createdAt: 1000,
@@ -340,7 +340,7 @@ void runLocalDatabaseAdapterContract({
           SyncColumns.isSynced: 1,
           SyncColumns.syncStatus: 'synced',
         });
-        final row = await adapter.getById('users', 'u1');
+        final row = await adapter.getById('things', 'u1');
         expect(row![SyncColumns.deletedAt], 5000);
       });
 
@@ -348,7 +348,7 @@ void runLocalDatabaseAdapterContract({
         final adapter = await openAdapter();
         try {
           await adapter.transaction(() async {
-            await adapter.upsert('users', {
+            await adapter.upsert('things', {
               SyncColumns.id: 'u1',
               'name': 'Alice',
               SyncColumns.createdAt: 1000,
@@ -362,7 +362,7 @@ void runLocalDatabaseAdapterContract({
         } on StateError {
           // expected
         }
-        expect(await adapter.getById('users', 'u1'), isNull);
+        expect(await adapter.getById('things', 'u1'), isNull);
       });
     });
 
