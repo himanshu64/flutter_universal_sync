@@ -1,20 +1,33 @@
 # Changelog
 
-## 0.2.0 — Unreleased
+## 0.2.0 — 2026-04-30
 
-Engine-support contract bumps. See spec
-`docs/superpowers/specs/2026-04-30-sync-engine-design.md` §4.
+Engine-support contract bumps. Required for `flutter_universal_sync_engine` 0.1.0.
+See spec `docs/superpowers/specs/2026-04-30-sync-engine-design.md` §4.
 
 ### Added
-- (filled in across Tasks 1–8 of the engine plan)
+- `SyncQueueEntry.nextRetryAt` field; round-trips through `toMap`/`fromMap`,
+  participates in equality.
+- `SyncColumns.nextRetryAt` constant + `SyncColumns.queueTypes` reference SQL.
+- `SyncMetaColumns` (table `_sync_meta`, columns `key`, `value`).
+- `LocalDatabaseAdapter.upsert(table, data)` — pull-pipeline write.
+- `LocalDatabaseAdapter.getMeta(key)` / `setMeta(key, value)` / `deleteMeta(key)`.
+- `LocalDatabaseAdapter.pendingForEntity(table, entityId)`.
+- `LocalDatabaseAdapter.rewriteQueuePayload(entryId, payload)`.
+- `LocalDatabaseAdapter.pendingSyncEntries(...)` gains a `readyAt` parameter
+  (back-compat with the existing `{int? limit}` form).
+- Contract-suite groups for every addition above; reusable by every adapter.
 
 ### Changed
-- (filled in across Tasks 1–8 of the engine plan)
+- `LocalDatabaseAdapter.recordSyncFailure(...)` now increments `retry_count`
+  and accepts `nextRetryAt`. Pass `incrementRetryCount: false` and omit
+  `nextRetryAt` to retain 0.1.0 "just store the error" behaviour.
 
-### Migration
-- 0.1.0 adapters need to add the `next_retry_at INTEGER` column to the
-  sync queue table and create the `_sync_meta(key TEXT PRIMARY KEY,
-  value TEXT NOT NULL)` table. No 0.1.0 adapters are published yet.
+### Migration (for 0.1.0 adapters; none published yet)
+- Add `next_retry_at INTEGER` to your sync queue table.
+- Create `_sync_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)`.
+- Implement the seven new / amended methods above.
+- The shared contract suite exercises every new method — run it.
 
 ## 0.1.0 — 2026-04-24
 
