@@ -1,0 +1,45 @@
+name: pkg-engine
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/flutter_universal_sync_engine/**'
+      - 'packages/flutter_universal_sync_core/**'
+      - '.github/workflows/engine.yml'
+  pull_request:
+    paths:
+      - 'packages/flutter_universal_sync_engine/**'
+      - 'packages/flutter_universal_sync_core/**'
+      - '.github/workflows/engine.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/flutter_universal_sync_engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: '3.4.0'
+      - name: Get dependencies
+        run: dart pub get
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Analyze
+        run: dart analyze --fatal-infos
+      - name: Run tests with coverage
+        run: dart test --coverage=coverage
+      - name: Format coverage
+        run: |
+          dart pub global activate coverage
+          dart pub global run coverage:format_coverage \
+            --lcov --in=coverage --out=coverage/lcov.info \
+            --report-on=lib --check-ignore
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-coverage
+          path: packages/flutter_universal_sync_engine/coverage/lcov.info
