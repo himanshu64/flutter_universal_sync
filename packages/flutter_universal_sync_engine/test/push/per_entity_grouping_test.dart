@@ -31,14 +31,16 @@ void main() {
     int seconds = 0,
     SyncOperation op = SyncOperation.update,
   }) =>
-      local.enqueueSync(SyncQueueEntry(
-        id: qid,
-        table: 'users',
-        entityId: entityId,
-        operation: op,
-        payload: {'id': entityId, 'q': qid},
-        createdAt: clock.now().add(Duration(seconds: seconds)),
-      ),);
+      local.enqueueSync(
+        SyncQueueEntry(
+          id: qid,
+          table: 'users',
+          entityId: entityId,
+          operation: op,
+          payload: {'id': entityId, 'q': qid},
+          createdAt: clock.now().add(Duration(seconds: seconds)),
+        ),
+      );
 
   test('pushes all entries when all succeed', () async {
     await enqueue('q1', 'u1', seconds: 0);

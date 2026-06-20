@@ -18,16 +18,18 @@ void main() {
       clock: clock,
       backoff: defaultBackoff,
     );
-    await local.enqueueSync(SyncQueueEntry(
-      id: 'q1',
-      table: 'users',
-      entityId: 'u1',
-      operation: SyncOperation.update,
-      payload: const {'id': 'u1'},
-      createdAt: clock.now(),
-      nextRetryAt: clock.now().add(const Duration(minutes: 1)),
-      retryCount: 1,
-    ),);
+    await local.enqueueSync(
+      SyncQueueEntry(
+        id: 'q1',
+        table: 'users',
+        entityId: 'u1',
+        operation: SyncOperation.update,
+        payload: const {'id': 'u1'},
+        createdAt: clock.now(),
+        nextRetryAt: clock.now().add(const Duration(minutes: 1)),
+        retryCount: 1,
+      ),
+    );
 
     await pipeline.drain();
     expect(remote.pushed, isEmpty);

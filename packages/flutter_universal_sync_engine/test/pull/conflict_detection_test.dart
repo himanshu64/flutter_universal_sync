@@ -53,14 +53,16 @@ void main() {
       SyncColumns.isSynced: 0,
       SyncColumns.syncStatus: 'pending',
     });
-    await local.enqueueSync(SyncQueueEntry(
-      id: 'q1',
-      table: 'users',
-      entityId: 'u1',
-      operation: SyncOperation.update,
-      payload: const {'id': 'u1', 'name': 'local'},
-      createdAt: DateTime.utc(2026, 1, 1, 12),
-    ),);
+    await local.enqueueSync(
+      SyncQueueEntry(
+        id: 'q1',
+        table: 'users',
+        entityId: 'u1',
+        operation: SyncOperation.update,
+        payload: const {'id': 'u1', 'name': 'local'},
+        createdAt: DateTime.utc(2026, 1, 1, 12),
+      ),
+    );
     final calls = <String>[];
     final config = TableConfig(
       conflictResolver: _RecordingResolver(calls, picks: 'remote'),

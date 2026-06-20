@@ -24,14 +24,16 @@ void main() {
       backoff: defaultBackoff,
     );
 
-    await local.enqueueSync(SyncQueueEntry(
-      id: 'q1',
-      table: 'users',
-      entityId: 'u1',
-      operation: SyncOperation.update,
-      payload: const {'id': 'u1'},
-      createdAt: clock.now(),
-    ),);
+    await local.enqueueSync(
+      SyncQueueEntry(
+        id: 'q1',
+        table: 'users',
+        entityId: 'u1',
+        operation: SyncOperation.update,
+        payload: const {'id': 'u1'},
+        createdAt: clock.now(),
+      ),
+    );
 
     local.crashOnNextMarkSynced = true;
     // Pipeline should swallow the crash and surface a failed entry.

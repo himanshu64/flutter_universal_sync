@@ -71,8 +71,10 @@ class PushPipeline {
       group.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     }
     final sortedKeys = groups.keys.toList()
-      ..sort((a, b) =>
-          groups[a]!.first.createdAt.compareTo(groups[b]!.first.createdAt),);
+      ..sort(
+        (a, b) =>
+            groups[a]!.first.createdAt.compareTo(groups[b]!.first.createdAt),
+      );
 
     var succeeded = 0;
     final failed = <({SyncQueueEntry entry, Object error})>[];

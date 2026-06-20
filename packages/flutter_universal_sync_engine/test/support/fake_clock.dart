@@ -6,8 +6,7 @@ import 'package:flutter_universal_sync_engine/src/engine/_clock.dart';
 /// futures that complete only when [advance] (or [advanceTo]) moves the
 /// virtual clock past the future's deadline.
 class FakeClock implements Clock {
-  FakeClock({DateTime? start})
-      : _now = start ?? DateTime.utc(2026, 1, 1, 12);
+  FakeClock({DateTime? start}) : _now = start ?? DateTime.utc(2026, 1, 1, 12);
 
   DateTime _now;
   final List<_Pending> _pending = [];
@@ -33,7 +32,10 @@ class FakeClock implements Clock {
   void advanceTo(DateTime target) {
     if (target.isBefore(_now)) {
       throw ArgumentError.value(
-          target, 'target', 'cannot move clock backwards',);
+        target,
+        'target',
+        'cannot move clock backwards',
+      );
     }
     _now = target;
     _flush();
