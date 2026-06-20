@@ -17,6 +17,9 @@ See spec `docs/superpowers/specs/2026-04-30-sync-engine-design.md` §4.
 - `LocalDatabaseAdapter.pendingSyncEntries(...)` gains a `readyAt` parameter
   (back-compat with the existing `{int? limit}` form).
 - Contract-suite groups for every addition above; reusable by every adapter.
+- `InMemoryAdapter` is now exported from
+  `package:flutter_universal_sync_core/testing.dart` so downstream packages
+  (e.g. the sync engine) can reuse it as a local-store test double.
 
 ### Changed
 - `LocalDatabaseAdapter.recordSyncFailure(...)` now increments `retry_count`

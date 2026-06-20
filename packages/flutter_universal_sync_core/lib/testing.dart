@@ -5,4 +5,5 @@
 /// `runLocalDatabaseAdapterContract` helper.
 library;
 
+export 'src/testing/in_memory_adapter.dart';
 export 'src/testing/local_database_adapter_contract.dart';

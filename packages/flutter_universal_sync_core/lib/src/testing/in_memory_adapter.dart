@@ -1,12 +1,20 @@
-import 'package:flutter_universal_sync_core/flutter_universal_sync_core.dart';
+import '../adapters/local_database_adapter.dart';
+import '../entities/sync_queue_entry.dart';
+import '../errors/sync_errors.dart';
+import '../schema/sync_columns.dart';
 
-/// An in-memory [LocalDatabaseAdapter] used to exercise the contract suite.
+/// An in-memory [LocalDatabaseAdapter] for tests and the contract suite.
+///
+/// Published via `package:flutter_universal_sync_core/testing.dart` so
+/// downstream packages (e.g. the sync engine) can wire it into their own
+/// test suites without re-implementing a local store.
 ///
 /// Storage shape:
 ///   _tables:  tableName -> rowId -> row map
 ///   _schemas: tableName -> set of column names (registered via
 ///             [registerTable] in tests before `validateSchema` is called)
 ///   _queue:   insertion-ordered list of queue entries
+///   _meta:    engine `_sync_meta` key/value store
 class InMemoryAdapter implements LocalDatabaseAdapter {
   final Map<String, Map<String, Map<String, dynamic>>> _tables = {};
   final Map<String, Set<String>> _schemas = {};
@@ -28,7 +36,8 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
 
   @override
   Future<void> insert(String table, Map<String, dynamic> data) async {
-    final rows = _tables.putIfAbsent(table, () => <String, Map<String, dynamic>>{});
+    final rows =
+        _tables.putIfAbsent(table, () => <String, Map<String, dynamic>>{});
     final id = data[SyncColumns.id] as String;
     if (rows.containsKey(id)) {
       throw StateError('Row $id already exists in $table');
