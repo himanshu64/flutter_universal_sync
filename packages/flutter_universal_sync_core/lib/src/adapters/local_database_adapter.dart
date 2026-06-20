@@ -96,9 +96,23 @@ abstract class LocalDatabaseAdapter {
   /// Marks the given queue entry as successfully synced.
   Future<void> markSynced(String queueEntryId);
 
-  /// Records a failed push attempt: stores [error] on the entry's
-  /// `last_error`. Plan 1 does not increment `retry_count`; Plan 2 will.
-  Future<void> recordSyncFailure(String queueEntryId, String error);
+  /// Records a failed push attempt for [queueEntryId].
+  ///
+  /// 0.2.0 semantics:
+  /// - Stores [error] in `last_error`.
+  /// - If [incrementRetryCount] (default `true`), increments `retry_count`.
+  /// - Writes [nextRetryAt] to the entry's `next_retry_at` column. Pass
+  ///   `null` to clear (rare; engine always passes a value when called
+  ///   for a real failure).
+  ///
+  /// Pass `incrementRetryCount: false` and omit [nextRetryAt] to retain
+  /// 0.1.0 "just record the error" behaviour. Atomic with [transaction].
+  Future<void> recordSyncFailure(
+    String queueEntryId,
+    String error, {
+    DateTime? nextRetryAt,
+    bool incrementRetryCount = true,
+  });
 
   /// Runs [action] inside a single atomic transaction. If [action] throws,
   /// every write performed during the callback is rolled back.

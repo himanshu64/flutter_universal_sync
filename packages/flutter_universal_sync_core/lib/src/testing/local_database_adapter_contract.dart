@@ -465,5 +465,83 @@ void runLocalDatabaseAdapterContract({
         expect(ready.first.id, 'q-fresh');
       });
     });
+
+    group('recordSyncFailure backoff args (0.2.0)', () {
+      Future<SyncQueueEntry> seedOne(LocalDatabaseAdapter adapter) async {
+        final entry = SyncQueueEntry(
+          id: 'q1',
+          table: 'users',
+          entityId: 'u1',
+          operation: SyncOperation.insert,
+          payload: const {'id': 'u1'},
+          createdAt: DateTime.utc(2026, 1, 1, 12),
+        );
+        await adapter.enqueueSync(entry);
+        return entry;
+      }
+
+      Future<SyncQueueEntry> reload(
+        LocalDatabaseAdapter adapter,
+        String id,
+      ) async {
+        final all = await adapter.pendingSyncEntries();
+        return all.firstWhere((e) => e.id == id);
+      }
+
+      test('default behaviour increments retry_count and sets fields', () async {
+        final adapter = await openAdapter();
+        await seedOne(adapter);
+        final retryAt = DateTime.utc(2026, 1, 1, 12, 0, 5);
+        await adapter.recordSyncFailure('q1', 'http 500', nextRetryAt: retryAt);
+        final reloaded = await reload(adapter, 'q1');
+        expect(reloaded.retryCount, 1);
+        expect(reloaded.nextRetryAt, retryAt);
+        expect(reloaded.lastError, 'http 500');
+      });
+
+      test('repeated failures keep incrementing retry_count', () async {
+        final adapter = await openAdapter();
+        await seedOne(adapter);
+        await adapter.recordSyncFailure('q1', 'e1',
+            nextRetryAt: DateTime.utc(2026, 1, 1, 12, 0, 1),);
+        await adapter.recordSyncFailure('q1', 'e2',
+            nextRetryAt: DateTime.utc(2026, 1, 1, 12, 0, 4),);
+        final reloaded = await reload(adapter, 'q1');
+        expect(reloaded.retryCount, 2);
+        expect(reloaded.lastError, 'e2');
+      });
+
+      test('incrementRetryCount=false preserves count (0.1.0 compat)', () async {
+        final adapter = await openAdapter();
+        await seedOne(adapter);
+        await adapter.recordSyncFailure(
+          'q1',
+          'just-record',
+          incrementRetryCount: false,
+        );
+        final reloaded = await reload(adapter, 'q1');
+        expect(reloaded.retryCount, 0);
+        expect(reloaded.lastError, 'just-record');
+        expect(reloaded.nextRetryAt, isNull);
+      });
+
+      test('rolled back inside transaction', () async {
+        final adapter = await openAdapter();
+        await seedOne(adapter);
+        try {
+          await adapter.transaction(() async {
+            await adapter.recordSyncFailure('q1', 'tx-test',
+                nextRetryAt: DateTime.utc(2026, 1, 1, 12, 0, 10),);
+            throw StateError('rollback');
+          });
+        } on StateError {
+          // expected
+        }
+        final reloaded = await reload(adapter, 'q1');
+        expect(reloaded.retryCount, 0);
+        expect(reloaded.lastError, isNull);
+        expect(reloaded.nextRetryAt, isNull);
+      });
+    });
   });
 }

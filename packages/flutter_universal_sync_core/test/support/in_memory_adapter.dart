@@ -115,10 +115,20 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
   }
 
   @override
-  Future<void> recordSyncFailure(String queueEntryId, String error) async {
+  Future<void> recordSyncFailure(
+    String queueEntryId,
+    String error, {
+    DateTime? nextRetryAt,
+    bool incrementRetryCount = true,
+  }) async {
     final i = _queue.indexWhere((e) => e.id == queueEntryId);
     if (i < 0) throw StateError('Queue entry $queueEntryId not found');
-    _queue[i] = _queue[i].copyWith(lastError: error);
+    final cur = _queue[i];
+    _queue[i] = cur.copyWith(
+      lastError: error,
+      retryCount: incrementRetryCount ? cur.retryCount + 1 : cur.retryCount,
+      nextRetryAt: nextRetryAt,
+    );
   }
 
   @override
