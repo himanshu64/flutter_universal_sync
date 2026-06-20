@@ -113,7 +113,7 @@ class SyncEngine {
     required Map<String, TableConfig> tables,
     Duration drainInterval = const Duration(minutes: 5),
     Duration Function(int retryCount) backoff = defaultBackoff,
-    IdGenerator idGenerator = const UuidV4Generator(),
+    IdGenerator? idGenerator, // defaults to UuidV4Generator(); not const-constructible
   });
 
   Stream<SyncStateSnapshot> get state;
@@ -315,7 +315,7 @@ The cycle never throws. Adapter exceptions (`SyncPushException`, `SyncPullExcept
 3. for each group (parallelism = 1, ordered by group's earliest created_at):
      for each entry in group (in created_at order):
        try:
-         await remote.pushOperation(entry)
+         await remote.pushChange(entry)
          await localDb.markSynced(entry.id)
        catch error:
          await localDb.recordSyncFailure(
@@ -426,7 +426,7 @@ If any per-row apply throws, the cursor is not advanced and we re-pull those row
 - Remote row for an entity that doesn't exist locally → upsert (treated as initial fetch). No conflict path because there's no `localRow` to merge with.
 - Remote row with `deleted_at` set → upsert respects the soft-delete column; existing local adapter treats as a tombstone (Plan 1 semantics).
 - Pull throws partway through → cursor stays at previous value; idempotent retry next cycle.
-- Concurrent `pushOperation` writing the same entity_id mid-pull → blocked by `transaction`'s atomicity contract.
+- Concurrent `pushChange` writing the same entity_id mid-pull → blocked by `transaction`'s atomicity contract.
 
 ---
 
@@ -486,12 +486,12 @@ The engine README has a first-class "Wire it up" section with this snippet so us
 
 The engine is high-stakes orchestration logic — every test pins a specific behavior, not "it generally works".
 
-### 9.1 Test doubles (`test/support/`)
+### 9.1 Test doubles
 
-- **`FakeConnectivityMonitor`** — programmable `isOnline` getter and `add(bool)` for emitting transitions.
-- **`FakeRemoteSyncAdapter`** — programmable: queue of canned `pushOperation` outcomes (success / specific exception), canned `pullChanges` responses keyed by `(table, since)`. Records all calls for assertion. Optional `pushDelay` for concurrency tests.
-- **Reuse `InMemoryAdapter`** from `flutter_universal_sync_core/test/support/`. Extended with the four new methods (`getMeta`/`setMeta`/`pendingForEntity`/`rewriteQueuePayload`) as part of the core 0.2.0 work; the contract suite validates atomicity.
-- **`FakeClock`** — manually advanceable `DateTime now()` and `Future delay(Duration)`. Engine takes an optional package-private `Clock` so backoff timing tests don't need real wall time.
+- **`FakeConnectivityMonitor`** — programmable `isOnline` getter and `emit(bool)` for emitting transitions. **As shipped:** lives in `lib/src/testing/` and is re-exported from `package:flutter_universal_sync_engine/testing.dart` so downstream packages can reuse it (see §10).
+- **`FakeRemoteSyncAdapter`** — programmable: queue of canned `pushChange` outcomes (success / specific exception), canned `pullChanges` responses keyed by `(table, since)`. Records all calls for assertion. Optional `pushDelay` for concurrency tests. Also under `lib/src/testing/`, re-exported from `testing.dart`.
+- **Reuse `InMemoryAdapter`** from `package:flutter_universal_sync_core/testing.dart`. **As shipped:** core 0.2.0 promoted `InMemoryAdapter` out of `test/support/` into `lib/src/testing/` and exports it from `testing.dart` (a published `test/` double cannot be imported across packages). It implements the four new methods (`getMeta`/`setMeta`/`pendingForEntity`/`rewriteQueuePayload`); the contract suite validates atomicity.
+- **`FakeClock`** — manually advanceable `DateTime now()` and `Future delay(Duration)`. Stays in the engine's `test/support/` (consumers never import it). Engine takes an optional package-private `Clock` so backoff timing tests don't need real wall time.
 
 ### 9.2 Test files
 
@@ -529,21 +529,29 @@ lib/
 │   ├── connectivity/
 │   │   └── connectivity_monitor.dart       # exported
 │   ├── engine/
-│   │   ├── sync_engine.dart                # exported
+│   │   ├── sync_engine.dart                # exported (drain loop folded in here)
 │   │   ├── table_config.dart               # exported
 │   │   ├── sync_state_snapshot.dart        # exported
 │   │   ├── engine_status.dart              # exported
 │   │   ├── backoff.dart                    # exported (defaultBackoff)
-│   │   └── _drain_loop.dart                # private
+│   │   └── _clock.dart                     # private (Clock abstraction)
 │   ├── push/
 │   │   └── push_pipeline.dart              # private
 │   ├── pull/
 │   │   └── pull_pipeline.dart              # private
-│   └── meta/
-│       └── meta_keys.dart                  # private (constants)
+│   ├── meta/
+│   │   └── meta_keys.dart                  # private (constants)
+│   └── testing/
+│       ├── fake_connectivity_monitor.dart  # re-exported via testing.dart
+│       └── fake_remote_sync_adapter.dart   # re-exported via testing.dart
 ├── flutter_universal_sync_engine.dart      # production barrel
 └── testing.dart                            # FakeConnectivityMonitor, FakeRemoteSyncAdapter
 ```
+
+**As shipped:** the drain-loop logic was small enough to live inside
+`sync_engine.dart` rather than a separate `_drain_loop.dart`. The test
+doubles live under `lib/src/testing/` (not `test/support/`) so the
+`testing.dart` barrel can re-export them to downstream packages.
 
 Production barrel re-exports:
 - `ConnectivityMonitor`
