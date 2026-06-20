@@ -1,0 +1,23 @@
+name: flutter_universal_sync_sqflite
+description: sqflite LocalDatabaseAdapter for the flutter_universal_sync family. Persists the sync queue and engine meta KV in SQLite alongside your domain tables.
+version: 0.1.0
+homepage: https://github.com/REPLACE_ME/flutter_universal_sync
+repository: https://github.com/REPLACE_ME/flutter_universal_sync
+issue_tracker: https://github.com/REPLACE_ME/flutter_universal_sync/issues
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  flutter_universal_sync_core: ^0.2.0
+  sqflite_common: ^2.5.0
+
+dev_dependencies:
+  coverage: ^1.8.0
+  lints: ^4.0.0
+  sqflite_common_ffi: ^2.3.3
+  test: ^1.25.0
+
+dependency_overrides:
+  flutter_universal_sync_core:
+    path: ../flutter_universal_sync_core
