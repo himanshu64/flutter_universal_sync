@@ -42,9 +42,9 @@ your app ─▶ repository ─▶ LocalDatabaseAdapter (sqflite / drift / hive /
 
 | Package | What it is | Status |
 |---|---|---|
-| [`flutter_universal_sync_core`](packages/flutter_universal_sync_core/) | Contracts: `SyncEntity`, adapter interfaces, conflict resolvers, schema, errors, shared contract test-suite | 0.2.0 |
-| [`flutter_universal_sync_engine`](packages/flutter_universal_sync_engine/) | The orchestration runtime: `SyncEngine`, push/pull pipelines, drain loop, state stream | 0.1.0 |
-| [`flutter_universal_sync_background`](packages/flutter_universal_sync_background/) | Headless background sync (WorkManager / BGTaskScheduler) — Plan 3 | 0.1.0 |
+| [`flutter_universal_sync_core`](packages/flutter_universal_sync_core/) | Contracts: `SyncEntity`, adapter interfaces, conflict resolvers, schema, errors, cache-eviction (`PurgeableAdapter`/`CacheEvictor`), shared contract test-suite | 0.2.1 |
+| [`flutter_universal_sync_engine`](packages/flutter_universal_sync_engine/) | The orchestration runtime: `SyncEngine`, push/pull pipelines, drain loop, FK-aware ordering, state stream | 0.1.1 |
+| [`flutter_universal_sync_background`](packages/flutter_universal_sync_background/) | Headless background sync (WorkManager / BGTaskScheduler) | 0.1.0 |
 
 ### Local adapters (`LocalDatabaseAdapter`)
 
@@ -52,9 +52,9 @@ All run core's shared `runLocalDatabaseAdapterContract` suite.
 
 | Package | Backend | Status |
 |---|---|---|
-| [`…_sqflite`](packages/flutter_universal_sync_sqflite/) | SQLite (sqflite_common) | 0.1.0 — contract-verified, 100% cov |
+| [`…_sqflite`](packages/flutter_universal_sync_sqflite/) | SQLite (sqflite_common) | 0.1.1 — contract-verified, 100% cov |
 | [`…_drift`](packages/flutter_universal_sync_drift/) | drift (raw SQL, no codegen) | 0.1.0 — contract-verified, 96% cov |
-| [`…_hive`](packages/flutter_universal_sync_hive/) | Hive | 0.1.0 — contract-verified, 98% cov |
+| [`…_hive`](packages/flutter_universal_sync_hive/) | Hive (optional AES-256 at rest) | 0.1.1 — contract-verified, 98% cov |
 | [`…_objectbox`](packages/flutter_universal_sync_objectbox/) | ObjectBox | 0.1.0 — reference skeleton (needs codegen + native lib) |
 
 ### Remote adapters (`RemoteSyncAdapter`)
@@ -68,6 +68,18 @@ See [Writing an adapter](#writing-an-adapter) for the shared conventions.
 | [`…_appwrite`](packages/flutter_universal_sync_appwrite/) | Appwrite Databases | 0.1.0 — mock-tested, 100% cov |
 | [`…_graphql`](packages/flutter_universal_sync_graphql/) | any GraphQL API | 0.1.0 — mock + live (SpaceX), 100% cov |
 | [`…_firebase`](packages/flutter_universal_sync_firebase/) | Cloud Firestore (REST) | 0.1.0 — mock-tested, 98% cov |
+
+### Capability packages
+
+Optional add-ons, each behind a stable interface — bring in only what you need.
+
+| Package | What it adds | Status |
+|---|---|---|
+| [`…_crdt`](packages/flutter_universal_sync_crdt/) | `LwwMapResolver` — per-field LWW-Element-Map CRDT `ConflictResolver` | 0.1.0 — 100% cov |
+| [`…_attachments`](packages/flutter_universal_sync_attachments/) | `ChunkedUploader` + `AttachmentQueue` — resumable chunked media uploads | 0.1.0 — 100% cov |
+| [`…_realtime`](packages/flutter_universal_sync_realtime/) | `RealtimeChannel` — WebSocket/SSE server-push applied to the local store, reconnect-with-backoff | 0.1.0 — 100% cov |
+
+Plus, built into existing packages: **idempotency-key** headers (REST), **encrypted-at-rest** storage (Hive), **FK-aware ordering** (engine `dependencies`), and **cache eviction** (`PurgeableAdapter`/`CacheEvictor` on sqflite + Hive). See [CHALLENGES.md](CHALLENGES.md).
 
 A runnable end-to-end example lives in [`examples/sync_demo`](examples/sync_demo/) (Flutter UI + demo-grade sqflite & REST adapters + the Node test backend in [`examples/test-backend`](examples/test-backend/)).
 

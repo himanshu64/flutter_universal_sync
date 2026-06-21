@@ -17,7 +17,7 @@ Status legend:
 | Intermittent connectivity | ✅ | `ConnectivityMonitor`-gated cycles + exponential backoff; offline writes queue and drain on reconnect. |
 | Consistency across devices | ⚠️ | Eventual consistency via push + pull + conflict resolver. No real-time guarantee. |
 | Strategy: LWW / versioning | ✅ | `LastWriteWinsResolver` (+ server/client priority); `updated_at` watermark cursor. |
-| Strategy: OT / CRDT | 🗺️ | Not implemented — pluggable `ConflictResolver` instead. A CRDT resolver could be added behind the same interface. |
+| Strategy: OT / CRDT | ✅ | [`flutter_universal_sync_crdt`](packages/flutter_universal_sync_crdt/) — `LwwMapResolver`, a per-field LWW-Element-Map CRDT behind the same `ConflictResolver` interface. |
 
 ## 2. Conflict resolution
 | Concern | Status | How |
@@ -34,7 +34,7 @@ Status legend:
 | Store & replay offline actions | ✅ | `SyncQueueEntry` rows persisted in the local adapter (`sync_queue`). |
 | Retry engine | ✅ | Failed pushes get `retry_count` + `next_retry_at` (backoff); the drain skips not-yet-due entries. |
 | Failed retries / ordering | ✅ | Per-entity FIFO; a group stops on first failure and resumes next cycle. |
-| Duplicate requests | ⚠️ | Push + mark-synced aren't one transaction, so a crash can re-push — relies on idempotent server ops (documented trade-off). No `Idempotency-Key` header yet (🗺️). |
+| Duplicate requests | ✅ | Push + mark-synced aren't one transaction, so a crash can re-push — but the REST adapter sends the queue-entry id as an `idempotency-key` header (on by default), so the server can dedupe. |
 
 ## 4. Temporary IDs
 | Concern | Status | How |
@@ -57,8 +57,8 @@ Status legend:
 ## 7. Large storage / media
 | Concern | Status | How |
 |---|---|---|
-| Cache eviction / compression / cleanup | 🗺️ | No built-in eviction. Use your adapter's store TTL/limits. |
-| Attachments & media (photo/video upload, chunking, resume) | 🗺️ | Out of scope — the engine syncs **structured rows**, not binaries. Image *caching* is demonstrated in [`apps/image_gallery`](apps/image_gallery/) via `cached_network_image`. |
+| Cache eviction / compression / cleanup | ✅ | `PurgeableAdapter` + `CacheEvictor` (core) — evict synced rows by age (`maxAge`) and/or count (`maxRows`), never touching pending rows. Implemented on sqflite, Hive, and the in-memory adapter. |
+| Attachments & media (photo/video upload, chunking, resume) | ✅ | [`flutter_universal_sync_attachments`](packages/flutter_universal_sync_attachments/) — `ChunkedUploader` streams binaries in chunks over an injectable HTTP client, resuming from a server-reported offset; `AttachmentQueue` drains them past failures. Image *caching* is also shown in [`apps/image_gallery`](apps/image_gallery/). |
 
 ## 8. Background sync
 | Concern | Status | How |
@@ -75,12 +75,12 @@ Status legend:
 | Concern | Status | How |
 |---|---|---|
 | Triple-tap submit | ⚠️ | One enqueue per mutation; the queue de-dupes by intent. Cross-restart re-push relies on idempotent server writes. |
-| Idempotency keys | 🗺️ | The queue-entry id is a natural key; sending it as an `Idempotency-Key` header is a small adapter addition. |
+| Idempotency keys | ✅ | The REST adapter sends the queue-entry id as an `idempotency-key` header (toggle via `idempotencyKeys`), so a re-pushed op is deduped server-side. |
 
 ## 11. Ordering dependencies
 | Concern | Status | How |
 |---|---|---|
-| Replay order (create → task → delete) | ⚠️ | **Per-entity** order is preserved (causal). Cross-entity is serial by `created_at`; no FK-aware transaction grouping (🗺️). |
+| Replay order (create → task → delete) | ✅ | **Per-entity** order is always preserved (causal). For cross-entity FK dependencies, pass `dependencies` to `SyncEngine` — a ready entry is deferred while any entity it references still has unsynced work (e.g. a `task` waits for its `project`). |
 
 ## 12. Schema migration
 | Concern | Status | How |
@@ -90,7 +90,7 @@ Status legend:
 ## 13. Security
 | Concern | Status | How |
 |---|---|---|
-| Encrypted DB / secure keys / token expiry | 🗺️ | Not built-in. Pair a local adapter with SQLCipher / encrypted Hive box + Keychain/Keystore; the adapter interface doesn't prevent it. |
+| Encrypted DB / secure keys / token expiry | ✅ | The Hive adapter takes a 32-byte `encryptionKey` and stores every box AES-256 encrypted at rest. Keep the key in Keychain/Keystore (`flutter_secure_storage`). sqflite can pair with SQLCipher the same way. |
 
 ## 14. Offline authentication
 | Concern | Status | How |
@@ -121,7 +121,7 @@ Status legend:
 ## 19. Real-time + offline
 | Concern | Status | How |
 |---|---|---|
-| WebSocket + local DB + background | 🗺️ | No real-time channel in v1 (engine is push/pull). A WS adapter could feed `pullChanges`-style updates into the same pipeline. |
+| WebSocket + local DB + background | ✅ | [`flutter_universal_sync_realtime`](packages/flutter_universal_sync_realtime/) — `RealtimeChannel` applies server-push row events to the local adapter (or triggers `engine.syncNow`), reconnecting with backoff. Transport-agnostic (WebSocket/SSE/listener injected as a stream). |
 
 ## Stack coverage
 - **Local adapters:** ✅ sqflite, drift, hive (contract-verified); ⚠️ objectbox (reference skeleton). Isar — 🧩 implement `LocalDatabaseAdapter` (Realm/WatermelonDB are RN-only).
@@ -132,7 +132,9 @@ Status legend:
 
 **Summary:** the family owns the *sync runtime* — queue, retry/backoff, pull+conflict
 resolution, observable state, pluggable storage/remotes, background scheduling,
-and a deterministic test surface. It deliberately leaves *policy* to you (reachability
-semantics, encryption, media, eviction, data migrations) and flags real gaps
-(CRDT/OT, idempotency headers, FK-aware ordering, real-time) behind stable
-interfaces so they can be added without breaking changes.
+and a deterministic test surface. What used to be roadmap is now shipped behind
+the same stable interfaces — CRDT/OT (`_crdt`), idempotency-key headers,
+FK-aware ordering (`dependencies`), encrypted-at-rest storage (Hive), cache
+eviction (`PurgeableAdapter`/`CacheEvictor`), chunked resumable media uploads
+(`_attachments`), and a real-time push channel (`_realtime`). It still leaves
+genuine *policy* to you (reachability semantics, schema migrations, key custody).
