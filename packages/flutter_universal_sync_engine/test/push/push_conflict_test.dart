@@ -76,8 +76,8 @@ void main() {
     expect(remote.pushed.length, 2); // original + merged re-push
     expect(remote.pushed.last.payload['name'], 'server'); // LWW merged
     expect(await local.pendingSyncEntries(), isEmpty); // acknowledged
-    expect(
-        (await local.getById('things', 't1'))?['name'], 'server'); // converged
+    final row = await local.getById('things', 't1');
+    expect(row?['name'], 'server'); // converged to the merged row
   });
 
   test('a 409 without serverState falls through to backoff', () async {
