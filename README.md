@@ -112,14 +112,43 @@ Shared conventions across the shipped remote adapters:
   paginate internally. Throw `SyncPullException` on failure.
 - **delete is a write**, not a hard delete — it sets `deleted_at` (a tombstone)
   so peers pull it.
-- **conflicts** are pull-side only in v1: a push 409 surfaces as
-  `SyncPushException` and retries; there is no push-side resolver.
+- **conflicts**: a version conflict (e.g. HTTP 409) should throw
+  `SyncPushException(isConflict: true, serverState: <server row>)` — the engine
+  resolves it with the table's `ConflictResolver` and re-pushes. Without
+  `serverState` it simply backs off and retries.
 - **auth** is read per request (pass a token/header callback) so rotating tokens
-  work without rebuilding the adapter.
+  work without rebuilding the adapter — see
+  [`flutter_universal_sync_auth`](packages/flutter_universal_sync_auth/).
 
 HTTP adapters take an injectable `http.Client` and are unit-tested with
 `package:http/testing`'s `MockClient`; local adapters inject their
 `DatabaseFactory`/`QueryExecutor` so they `dart test` headlessly.
+
+**Verify a custom adapter with the shared contracts.** Both interfaces ship a
+behavioural contract suite in `package:flutter_universal_sync_core/testing.dart`
+— prove your adapter conforms instead of guessing:
+
+```dart
+// Local adapter:
+runLocalDatabaseAdapterContract(
+  adapterName: 'MyStore',
+  factory: () => MyStoreAdapter(),
+  createTestTable: (a) async { /* register/CREATE the `things` table */ },
+  createBrokenTable: (a) async { /* a table missing sync columns */ },
+);
+
+// Remote adapter — implement a RemoteAdapterHarness (adapter + a way to
+// seed/inspect its backend), then:
+runRemoteSyncAdapterContract(
+  adapterName: 'MyApi',
+  newHarness: () => MyApiHarness(), // see packages/.../test/rest_contract_test.dart
+);
+```
+
+The remote contract checks pull (empty backend, seeded rows carry `id`/
+`updated_at`) and push (insert lands, update reflects, round-trips back through
+pull, delete removes/tombstones). `packages/flutter_universal_sync_rest/test/rest_contract_test.dart`
+is a copy-paste template (a `MockClient` fake server).
 
 ## Quickstart
 
