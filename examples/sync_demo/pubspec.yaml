@@ -1,0 +1,36 @@
+name: sync_demo
+description: "Demo app exercising flutter_universal_sync_core against the test backend"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_universal_sync_core:
+    path: ../../packages/flutter_universal_sync_core
+  flutter_universal_sync_engine:
+    path: ../../packages/flutter_universal_sync_engine
+  connectivity_plus: ^6.0.0
+  http: ^1.2.2
+  path: ^1.9.0
+  path_provider: ^2.1.4
+  sqflite: ^2.4.0
+  uuid: ^4.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+# The engine depends on flutter_universal_sync_core ^0.2.0 from pub.dev,
+# but in this monorepo both packages are unpublished path deps. Pin core
+# to the local path so the engine's transitive dependency resolves here.
+dependency_overrides:
+  flutter_universal_sync_core:
+    path: ../../packages/flutter_universal_sync_core
+
+flutter:
+  uses-material-design: true
