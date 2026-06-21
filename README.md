@@ -4,6 +4,19 @@
   <img src="assets/feature.svg" alt="flutter_universal_sync — offline-first, backend-agnostic, storage-agnostic sync for Flutter" width="100%">
 </p>
 
+<p align="center">
+  <a href="https://github.com/himanshu64/flutter_universal_sync/actions/workflows/core.yml"><img src="https://github.com/himanshu64/flutter_universal_sync/actions/workflows/core.yml/badge.svg" alt="core CI"></a>
+  <a href="https://github.com/himanshu64/flutter_universal_sync/actions/workflows/engine.yml"><img src="https://github.com/himanshu64/flutter_universal_sync/actions/workflows/engine.yml/badge.svg" alt="engine CI"></a>
+  <img src="https://img.shields.io/badge/coverage-%E2%89%A595%25-brightgreen" alt="coverage ≥95%">
+  <br>
+  <a href="https://pub.dev/packages/flutter_universal_sync_core"><img src="https://img.shields.io/pub/v/flutter_universal_sync_core?label=core&logo=dart&color=0175C2" alt="pub: core"></a>
+  <a href="https://pub.dev/packages/flutter_universal_sync_engine"><img src="https://img.shields.io/pub/v/flutter_universal_sync_engine?label=engine&logo=dart&color=0175C2" alt="pub: engine"></a>
+  <img src="https://img.shields.io/badge/Dart-%5E3.4-0175C2?logo=dart&logoColor=white" alt="Dart ^3.4">
+  <img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter 3.x">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/PRs-welcome-ff69b4" alt="PRs welcome">
+</p>
+
 Offline-first, backend-agnostic, storage-agnostic sync for Flutter — a federated package family. Write locally, the engine drains a queue to your backend with retry/backoff, pulls deltas, and resolves conflicts. Monorepo.
 
 ```
