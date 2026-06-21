@@ -85,6 +85,27 @@ until each event's handler completes, so a slow write never drops or reorders a
 later event. Handler and transport errors are reported to `onError` and never
 kill the channel.
 
+## Cross-device consistency
+
+This is the live half of multi-device convergence: device A pushes a change → the
+server broadcasts it → device B's channel applies it within moments, instead of
+waiting for B's next poll. Wire it to the engine so a server signal also flushes
+B's own pending writes:
+
+```dart
+final channel = RealtimeChannel(
+  localDb: local,            // apply incoming rows
+  connect: openRowStream,
+  onApplied: () => engine.syncNow(), // optional: also push/pull to fully converge
+);
+```
+
+By default (`monotonic: true`) the auto-apply path **never regresses** a row: an
+incoming event whose `updated_at` is not newer than the local copy is skipped, so
+out-of-order or duplicated delivery can't move a device backwards (a
+monotonic-reads guarantee). Offline, devices still converge on the next pull.
+Set `monotonic: false` for blind last-message-wins apply.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

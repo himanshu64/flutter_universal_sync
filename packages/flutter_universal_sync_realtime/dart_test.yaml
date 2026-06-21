@@ -1,0 +1,5 @@
+tags:
+  integration:
+    # Hits the live wss://echo.websocket.org echo server; excluded from the
+    # default/coverage run via `dart test -x integration`.
+    skip: false

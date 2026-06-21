@@ -55,6 +55,116 @@ void main() {
     expect(channel.status, RealtimeStatus.disconnected);
   });
 
+  group('monotonic apply (no-regression)', () {
+    RealtimeEvent versioned(String id, String name, int updatedAt) =>
+        RealtimeEvent(
+          table: 'things',
+          type: RealtimeEventType.upsert,
+          row: {
+            SyncColumns.id: id,
+            'name': name,
+            SyncColumns.updatedAt: updatedAt,
+          },
+        );
+
+    Future<InMemoryAdapter> applyAll(
+      List<RealtimeEvent> events, {
+      bool monotonic = true,
+    }) async {
+      final db = InMemoryAdapter();
+      final controllers = <StreamController<RealtimeEvent>>[];
+      final channel = RealtimeChannel(
+        connect: () {
+          final c = StreamController<RealtimeEvent>();
+          controllers.add(c);
+          return c.stream;
+        },
+        localDb: db,
+        monotonic: monotonic,
+        maxReconnectAttempts: 0,
+        sleep: (_) async {},
+      );
+      final running = channel.start();
+      await pump();
+      for (final e in events) {
+        controllers.last.add(e);
+        await pump();
+      }
+      await controllers.last.close();
+      await running;
+      return db;
+    }
+
+    test('skips an out-of-order older row', () async {
+      final db = await applyAll([
+        versioned('1', 'newer', 9000),
+        versioned('1', 'older', 1000), // arrives late, must be ignored
+      ]);
+      expect((await db.getById('things', '1'))?['name'], 'newer');
+    });
+
+    test('applies a newer row', () async {
+      final db = await applyAll([
+        versioned('1', 'old', 1000),
+        versioned('1', 'new', 5000),
+      ]);
+      expect((await db.getById('things', '1'))?['name'], 'new');
+    });
+
+    test('applies the first event for a brand-new row', () async {
+      final db = await applyAll([versioned('1', 'first', 1000)]);
+      expect((await db.getById('things', '1'))?['name'], 'first');
+    });
+
+    test('applies rows that lack a comparable updated_at', () async {
+      final db = await applyAll([
+        versioned('1', 'newer', 9000),
+        RealtimeEvent(
+          table: 'things',
+          type: RealtimeEventType.upsert,
+          row: {SyncColumns.id: '1', 'name': 'no-version'},
+        ),
+      ]);
+      expect((await db.getById('things', '1'))?['name'], 'no-version');
+    });
+
+    test('monotonic:false applies blindly (regresses)', () async {
+      final db = await applyAll(
+        [versioned('1', 'newer', 9000), versioned('1', 'older', 1000)],
+        monotonic: false,
+      );
+      expect((await db.getById('things', '1'))?['name'], 'older');
+    });
+
+    test('onApplied fires after an apply but not after a monotonic skip',
+        () async {
+      var applied = 0;
+      final db = InMemoryAdapter();
+      final controllers = <StreamController<RealtimeEvent>>[];
+      final channel = RealtimeChannel(
+        connect: () {
+          final c = StreamController<RealtimeEvent>();
+          controllers.add(c);
+          return c.stream;
+        },
+        localDb: db,
+        onApplied: () async => applied++,
+        maxReconnectAttempts: 0,
+        sleep: (_) async {},
+      );
+      final running = channel.start();
+      await pump();
+      controllers.last.add(versioned('1', 'newer', 9000)); // applied
+      await pump();
+      controllers.last.add(versioned('1', 'older', 1000)); // skipped
+      await pump();
+      await controllers.last.close();
+      await running;
+
+      expect(applied, 1); // only the applied event triggered the hook
+    });
+  });
+
   test('onEvent overrides the default auto-apply', () async {
     final db = InMemoryAdapter();
     final seen = <RealtimeEvent>[];
