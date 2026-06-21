@@ -1,15 +1,15 @@
 name: flutter_universal_sync_supabase
 description: Supabase (PostgREST) RemoteSyncAdapter for the flutter_universal_sync family.
 version: 0.1.0
-homepage: https://github.com/REPLACE_ME/flutter_universal_sync
-repository: https://github.com/REPLACE_ME/flutter_universal_sync
-issue_tracker: https://github.com/REPLACE_ME/flutter_universal_sync/issues
+homepage: https://github.com/himanshu64/flutter_universal_sync
+repository: https://github.com/himanshu64/flutter_universal_sync
+issue_tracker: https://github.com/himanshu64/flutter_universal_sync/issues
 
 environment:
   sdk: ^3.4.0
 
 dependencies:
-  flutter_universal_sync_core: ^0.2.0
+  flutter_universal_sync_core: ^0.3.0
   http: ^1.2.2
 
 dev_dependencies:

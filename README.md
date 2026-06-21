@@ -359,6 +359,8 @@ Try it: turn off Wi-Fi, add an item → watch it appear in `sync_queue` with `sy
   handles built-in, partially, or leaves to your app.
 - **[Sample apps](apps/)** — four runnable apps (Clean Architecture · MVVM ·
   VIPER) on the same stack, plus a [battery-performance guide](apps/BATTERY_PERFORMANCE.md).
+- **[Releasing](RELEASING.md)** — how packages publish to pub.dev (automated via
+  GitHub Actions + OIDC), the publish order, and per-release steps.
 
 The design lives with the code — each package has its own README:
 [core](packages/flutter_universal_sync_core/README.md) ·

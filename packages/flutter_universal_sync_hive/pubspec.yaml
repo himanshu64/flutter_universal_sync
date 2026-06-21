@@ -1,15 +1,15 @@
 name: flutter_universal_sync_hive
 description: Hive LocalDatabaseAdapter for the flutter_universal_sync family. Persists the sync queue and engine meta KV in Hive boxes alongside your domain boxes.
 version: 0.1.2
-homepage: https://github.com/REPLACE_ME/flutter_universal_sync
-repository: https://github.com/REPLACE_ME/flutter_universal_sync
-issue_tracker: https://github.com/REPLACE_ME/flutter_universal_sync/issues
+homepage: https://github.com/himanshu64/flutter_universal_sync
+repository: https://github.com/himanshu64/flutter_universal_sync
+issue_tracker: https://github.com/himanshu64/flutter_universal_sync/issues
 
 environment:
   sdk: ^3.4.0
 
 dependencies:
-  flutter_universal_sync_core: ^0.2.0
+  flutter_universal_sync_core: ^0.3.0
   hive: ^2.2.3
 
 dev_dependencies:

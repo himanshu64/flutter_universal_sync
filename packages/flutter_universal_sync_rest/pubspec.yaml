@@ -1,15 +1,15 @@
 name: flutter_universal_sync_rest
 description: REST RemoteSyncAdapter for the flutter_universal_sync family. Pushes queue entries and pulls deltas over plain HTTP/JSON.
 version: 0.1.2
-homepage: https://github.com/REPLACE_ME/flutter_universal_sync
-repository: https://github.com/REPLACE_ME/flutter_universal_sync
-issue_tracker: https://github.com/REPLACE_ME/flutter_universal_sync/issues
+homepage: https://github.com/himanshu64/flutter_universal_sync
+repository: https://github.com/himanshu64/flutter_universal_sync
+issue_tracker: https://github.com/himanshu64/flutter_universal_sync/issues
 
 environment:
   sdk: ^3.4.0
 
 dependencies:
-  flutter_universal_sync_core: ^0.2.0
+  flutter_universal_sync_core: ^0.3.0
   http: ^1.2.2
 
 dev_dependencies:
