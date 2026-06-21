@@ -1,5 +1,9 @@
 # flutter_universal_sync
 
+<p align="center">
+  <img src="assets/feature.svg" alt="flutter_universal_sync — offline-first, backend-agnostic, storage-agnostic sync for Flutter" width="100%">
+</p>
+
 Offline-first, backend-agnostic, storage-agnostic sync for Flutter — a federated package family. Write locally, the engine drains a queue to your backend with retry/backoff, pulls deltas, and resolves conflicts. Monorepo.
 
 ```
