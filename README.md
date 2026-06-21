@@ -311,6 +311,13 @@ Try it: turn off Wi-Fi, add an item → watch it appear in `sync_queue` with `sy
 
 ## Docs
 
+- **[Offline-first challenges → coverage map](CHALLENGES.md)** — the 19 hard
+  problems of offline sync (conflicts, queues, temp IDs, idempotency, schema
+  migration, security, background limits, …) and exactly what this family
+  handles built-in, partially, or leaves to your app.
+- **[Sample apps](apps/)** — four runnable apps (Clean Architecture · MVVM ·
+  VIPER) on the same stack, plus a [battery-performance guide](apps/BATTERY_PERFORMANCE.md).
+
 The design lives with the code — each package has its own README:
 [core](packages/flutter_universal_sync_core/README.md) ·
 [engine](packages/flutter_universal_sync_engine/README.md) (public API,
