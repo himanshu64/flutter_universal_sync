@@ -1,0 +1,14 @@
+name: flutter_universal_sync_auth
+description: Offline-first authentication for the flutter_universal_sync family — a cached token session that survives offline, refreshes on reconnect, and provides Bearer headers for remote adapters.
+version: 0.1.0
+homepage: https://github.com/REPLACE_ME/flutter_universal_sync
+repository: https://github.com/REPLACE_ME/flutter_universal_sync
+issue_tracker: https://github.com/REPLACE_ME/flutter_universal_sync/issues
+
+environment:
+  sdk: ^3.4.0
+
+dev_dependencies:
+  coverage: ^1.8.0
+  lints: ^4.0.0
+  test: ^1.25.0
