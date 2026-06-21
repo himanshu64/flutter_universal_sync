@@ -12,18 +12,19 @@ class _ThrowingResolver implements ConflictResolver {
   Map<String, dynamic> resolve(
     Map<String, dynamic> local,
     Map<String, dynamic> remote,
-  ) => throw StateError('resolver blew up');
+  ) =>
+      throw StateError('resolver blew up');
 }
 
 void main() {
   SyncQueueEntry entry(Map<String, dynamic> payload) => SyncQueueEntry(
-    id: 'q1',
-    table: 'things',
-    entityId: 't1',
-    operation: SyncOperation.update,
-    payload: payload,
-    createdAt: DateTime.utc(2026, 1, 1),
-  );
+        id: 'q1',
+        table: 'things',
+        entityId: 't1',
+        operation: SyncOperation.update,
+        payload: payload,
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
 
   SyncPushException conflict({Map<String, dynamic>? serverState}) =>
       SyncPushException(
@@ -61,7 +62,8 @@ void main() {
     return (local, remote, await pipeline.drain());
   }
 
-  test('resolves a 409, rewrites the payload, re-pushes, and marks synced', () async {
+  test('resolves a 409, rewrites the payload, re-pushes, and marks synced',
+      () async {
     final remote = FakeRemoteSyncAdapter()
       ..pushOutcomes.addAll([conflict(serverState: serverRow), null]);
 
@@ -74,7 +76,8 @@ void main() {
     expect(remote.pushed.length, 2); // original + merged re-push
     expect(remote.pushed.last.payload['name'], 'server'); // LWW merged
     expect(await local.pendingSyncEntries(), isEmpty); // acknowledged
-    expect((await local.getById('things', 't1'))?['name'], 'server'); // converged
+    expect(
+        (await local.getById('things', 't1'))?['name'], 'server'); // converged
   });
 
   test('a 409 without serverState falls through to backoff', () async {

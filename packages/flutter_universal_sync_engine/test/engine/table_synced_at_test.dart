@@ -16,7 +16,8 @@ void main() {
     SyncColumns.syncStatus,
   ];
 
-  test('records tableSyncedAt after a successful pull (even when empty)', () async {
+  test('records tableSyncedAt after a successful pull (even when empty)',
+      () async {
     final clock = FakeClock(start: DateTime.utc(2026, 6, 1, 9));
     final local = InMemoryAdapter()..registerTable('things', cols);
     final remote = FakeRemoteSyncAdapter()
