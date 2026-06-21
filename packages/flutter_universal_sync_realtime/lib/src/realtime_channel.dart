@@ -48,11 +48,18 @@ class RealtimeChannel {
   /// maps a 1-based attempt to a delay (defaults to [defaultRealtimeBackoff]);
   /// [maxReconnectAttempts] caps retries (`null` = forever). [sleep] is
   /// injectable so tests run without real delays.
+  ///
+  /// [monotonic] (default `true`) skips applying an incoming row whose
+  /// `updated_at` is not newer than the local copy — so out-of-order delivery
+  /// can never regress a device to an older version (a monotonic-reads
+  /// guarantee). Only affects the auto-apply path, not [onEvent].
   RealtimeChannel({
     required this.connect,
     this.localDb,
     this.onEvent,
+    this.onApplied,
     this.onError,
+    this.monotonic = true,
     Duration Function(int attempt)? reconnectBackoff,
     this.maxReconnectAttempts,
     Future<void> Function(Duration delay)? sleep,
@@ -68,8 +75,16 @@ class RealtimeChannel {
   /// Optional custom handler invoked for every event (overrides auto-apply).
   final Future<void> Function(RealtimeEvent event)? onEvent;
 
+  /// Optional hook invoked after an event is processed (e.g. to call
+  /// `engine.syncNow()` so the device also flushes its own pending writes and
+  /// fully converges). Not called when a row is skipped by [monotonic].
+  final Future<void> Function()? onApplied;
+
   /// Optional observer for transport and handler errors.
   final void Function(Object error)? onError;
+
+  /// Whether the auto-apply path skips rows older than the local copy.
+  final bool monotonic;
 
   /// Maps a 1-based reconnect attempt to a delay.
   final Duration Function(int attempt) reconnectBackoff;
@@ -176,13 +191,33 @@ class RealtimeChannel {
     final handler = onEvent;
     if (handler != null) {
       await handler(event);
-      return;
+    } else {
+      final db = localDb;
+      final row = event.row;
+      if (db != null && row != null) {
+        // A monotonic skip is a no-op — don't fire onApplied for it.
+        if (monotonic && await _wouldRegress(db, event.table, row)) return;
+        await db.upsert(event.table, row);
+      }
     }
-    final db = localDb;
-    final row = event.row;
-    if (db != null && row != null) {
-      await db.upsert(event.table, row);
-    }
+    final applied = onApplied;
+    if (applied != null) await applied();
+  }
+
+  /// Whether applying [row] would move [table] backwards — the local copy is
+  /// already at the same or a newer `updated_at`. Rows without a comparable
+  /// `updated_at` (or with no local copy yet) are always applied.
+  Future<bool> _wouldRegress(
+    LocalDatabaseAdapter db,
+    String table,
+    Map<String, dynamic> row,
+  ) async {
+    final incoming = row[SyncColumns.updatedAt];
+    final id = row[SyncColumns.id];
+    if (incoming is! int || id is! String) return false;
+    final existing = await db.getById(table, id);
+    final current = existing?[SyncColumns.updatedAt];
+    return current is int && current >= incoming;
   }
 
   void _setStatus(RealtimeStatus status) {

@@ -15,7 +15,7 @@ Status legend:
 |---|---|---|
 | Sync local ↔ server | ✅ | `SyncEngine` drains a per-op queue (push) and pulls deltas via a `since` cursor. |
 | Intermittent connectivity | ✅ | `ConnectivityMonitor`-gated cycles + exponential backoff; offline writes queue and drain on reconnect. |
-| Consistency across devices | ⚠️ | Eventual consistency via push + pull + conflict resolver. No real-time guarantee. |
+| Consistency across devices | ✅ | Eventual consistency via push + pull + conflict resolver, upgraded to **near-real-time** by [`flutter_universal_sync_realtime`](packages/flutter_universal_sync_realtime/): device A's change is broadcast and applied on device B live. `RealtimeChannel` applies with a **monotonic-reads guarantee** (`monotonic: true`) — out-of-order delivery never regresses a device to an older `updated_at`. Offline, devices still converge on the next pull. |
 | Strategy: LWW / versioning | ✅ | `LastWriteWinsResolver` (+ server/client priority); `updated_at` watermark cursor. |
 | Strategy: OT / CRDT | ✅ | [`flutter_universal_sync_crdt`](packages/flutter_universal_sync_crdt/) — `LwwMapResolver`, a per-field LWW-Element-Map CRDT behind the same `ConflictResolver` interface. |
 

@@ -26,6 +26,10 @@
   **push-side** conflict resolution in the engine.
 - `rowFreshness` + `StalenessPolicy` (freshness) — classify a cached row as
   synced/pending and decide whether table data is too old to trust.
+- `runRemoteSyncAdapterContract` + `RemoteAdapterHarness` (in `testing.dart`) —
+  a shared behavioural contract for **remote** adapters, mirroring
+  `runLocalDatabaseAdapterContract`. Lets a custom `RemoteSyncAdapter` prove it
+  conforms (pull empty/seeded, push insert/update/round-trip/delete).
 
 ## 0.2.1 — 2026-06-21
 

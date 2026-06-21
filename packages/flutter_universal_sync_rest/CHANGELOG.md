@@ -7,6 +7,10 @@
   the response body (if a JSON object) is surfaced as the server's current row,
   so the engine can resolve the conflict and re-push.
 
+### Testing
+- Runs core's shared `runRemoteSyncAdapterContract` against a `MockClient` fake
+  REST server — a copy-paste template for verifying custom remote adapters.
+
 ## 0.1.1 — 2026-06-21
 
 ### Added
