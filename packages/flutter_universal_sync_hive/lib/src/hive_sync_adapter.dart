@@ -16,10 +16,17 @@ import 'package:hive/hive.dart';
 /// way the shared contract suite does.
 class HiveSyncAdapter implements LocalDatabaseAdapter {
   /// Creates an adapter whose Hive data lives under [directory].
-  HiveSyncAdapter({required this.directory});
+  ///
+  /// Pass a 32-byte [encryptionKey] to store every box (domain rows, the sync
+  /// queue, and meta) AES-256 encrypted at rest. Keep that key in secure
+  /// storage (Keychain / Keystore via `flutter_secure_storage`), never in code.
+  HiveSyncAdapter({required this.directory, List<int>? encryptionKey})
+      : _cipher = encryptionKey == null ? null : HiveAesCipher(encryptionKey);
 
   /// Filesystem directory Hive initialises against.
   final String directory;
+
+  final HiveCipher? _cipher;
 
   static const _queueBox = '__sync_queue';
   static const _metaBox = '__sync_meta';
@@ -42,8 +49,8 @@ class HiveSyncAdapter implements LocalDatabaseAdapter {
   @override
   Future<void> init() async {
     Hive.init(directory);
-    _queue = await Hive.openBox<String>(_queueBox);
-    _meta = await Hive.openBox<String>(_metaBox);
+    _queue = await Hive.openBox<String>(_queueBox, encryptionCipher: _cipher);
+    _meta = await Hive.openBox<String>(_metaBox, encryptionCipher: _cipher);
     _boxes[_queueBox] = _queue;
     _boxes[_metaBox] = _meta;
     // Resume the sequence past anything already persisted.
@@ -65,7 +72,7 @@ class HiveSyncAdapter implements LocalDatabaseAdapter {
     final name = 'dom_$table';
     final existing = _boxes[name];
     if (existing != null) return existing;
-    final box = await Hive.openBox<String>(name);
+    final box = await Hive.openBox<String>(name, encryptionCipher: _cipher);
     _boxes[name] = box;
     return box;
   }

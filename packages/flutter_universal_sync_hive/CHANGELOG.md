@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1 — 2026-06-21
+
+### Added
+- Optional 32-byte `encryptionKey` — stores every box (domain rows, queue, meta)
+  AES-256 encrypted at rest via Hive's `HiveAesCipher`.
+
+
 ## 0.1.0 — 2026-06-21
 
 Initial release. Hive `LocalDatabaseAdapter` for the
