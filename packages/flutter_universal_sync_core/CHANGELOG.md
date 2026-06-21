@@ -21,6 +21,11 @@
   Runs pending migrations in ascending order, each inside the adapter's
   transaction with the version bump (stored in the meta KV), so a failed step
   rolls back and re-runs next launch.
+- `SyncPushException` gains `isConflict` + `serverState` so adapters can report
+  a version conflict (HTTP 409) with the server's current row, enabling
+  **push-side** conflict resolution in the engine.
+- `rowFreshness` + `StalenessPolicy` (freshness) — classify a cached row as
+  synced/pending and decide whether table data is too old to trust.
 
 ## 0.2.1 — 2026-06-21
 

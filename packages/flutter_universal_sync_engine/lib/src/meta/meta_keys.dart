@@ -7,4 +7,9 @@ class MetaKeys {
   /// Cursor value is a `DateTime.toIso8601String()` of the most recent
   /// `updated_at` seen in any successful pull for that table.
   static String pullCursor(String table) => 'pull_cursor:$table';
+
+  /// Returns the per-table "last synced at" key, e.g. `last_pull:users`.
+  /// Value is a `DateTime.toIso8601String()` recorded after each successful
+  /// pull (even an empty one) — drives staleness checks for cached reads.
+  static String lastPull(String table) => 'last_pull:$table';
 }

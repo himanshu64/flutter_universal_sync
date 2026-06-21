@@ -1,6 +1,6 @@
 name: flutter_universal_sync_engine
 description: Sync engine for the flutter_universal_sync family. Drains the queue, pulls deltas, runs conflict resolvers — pure Dart, no Flutter dependency.
-version: 0.1.0
+version: 0.1.2
 homepage: https://github.com/REPLACE_ME/flutter_universal_sync
 repository: https://github.com/REPLACE_ME/flutter_universal_sync
 issue_tracker: https://github.com/REPLACE_ME/flutter_universal_sync/issues

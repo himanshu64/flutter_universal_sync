@@ -36,6 +36,7 @@ class PushPipeline {
     required this.clock,
     required this.backoff,
     this.dependencies,
+    this.conflictResolverFor,
   });
 
   /// Local store the queue is drained from.
@@ -56,6 +57,13 @@ class PushPipeline {
   /// waits until its `project` has been acknowledged. Cyclic dependencies are
   /// not resolved (both sides wait); declare acyclic relationships.
   final Set<String> Function(SyncQueueEntry entry)? dependencies;
+
+  /// Resolver lookup for **push-side** conflicts. When a `pushChange` throws a
+  /// [SyncPushException] with `isConflict` and a `serverState`, the resolver
+  /// for that table merges the local payload with the server's version; the
+  /// merged row is applied locally, the queue payload rewritten, and the push
+  /// retried once. A second failure falls through to normal backoff.
+  final ConflictResolver Function(String table)? conflictResolverFor;
 
   /// Runs one drain pass and returns its aggregate result.
   Future<PushDrainResult> drain() async {
@@ -106,7 +114,7 @@ class PushPipeline {
     for (final entityId in sortedKeys) {
       for (final entry in groups[entityId]!) {
         try {
-          await remote.pushChange(entry);
+          await _push(entry);
         } catch (error) {
           // Real push failure: record it and apply backoff so the entry
           // is deferred until its next_retry_at.
@@ -145,5 +153,35 @@ class PushPipeline {
       skippedDueToBackoff: skipped,
       failed: failed,
     );
+  }
+
+  /// Pushes [entry], resolving a single push-side version conflict if the
+  /// adapter reports one (HTTP 409) and a resolver + server state are available.
+  /// A conflict resolution that itself fails re-throws so the caller applies
+  /// backoff — bounding resolution to one attempt per drain.
+  Future<void> _push(SyncQueueEntry entry) async {
+    try {
+      await remote.pushChange(entry);
+    } on SyncPushException catch (e) {
+      final resolverFor = conflictResolverFor;
+      final server = e.serverState;
+      if (!e.isConflict || resolverFor == null || server == null) rethrow;
+
+      final Map<String, dynamic> merged;
+      try {
+        merged = resolverFor(entry.table).resolve(entry.payload, server);
+      } catch (error) {
+        throw ConflictResolutionException(
+          entityId: entry.entityId,
+          cause: error,
+        );
+      }
+
+      // Converge local state on the merged row, rewrite the queued payload,
+      // and re-push once. A second failure propagates to the backoff path.
+      await localDb.upsert(entry.table, merged);
+      await localDb.rewriteQueuePayload(entry.id, merged);
+      await remote.pushChange(entry.copyWith(payload: merged));
+    }
   }
 }

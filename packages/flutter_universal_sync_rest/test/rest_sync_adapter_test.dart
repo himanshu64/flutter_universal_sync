@@ -110,6 +110,40 @@ void main() {
         throwsA(isA<SyncPushException>()),
       );
     });
+
+    test('409 → conflict exception carrying the server row', () async {
+      final a = adapter(
+        MockClient(
+          (r) async => http.Response(
+            jsonEncode({'id': 'p1', 'title': 'server', 'updated_at': 9000}),
+            409,
+          ),
+        ),
+      );
+      await expectLater(
+        a.pushChange(entry(SyncOperation.update)),
+        throwsA(
+          isA<SyncPushException>()
+              .having((e) => e.isConflict, 'isConflict', isTrue)
+              .having((e) => e.serverState?['title'], 'serverState', 'server'),
+        ),
+      );
+    });
+
+    test('409 with a non-JSON body still flags a conflict (null state)',
+        () async {
+      final a = adapter(
+        MockClient((r) async => http.Response('Conflict', 409)),
+      );
+      await expectLater(
+        a.pushChange(entry(SyncOperation.update)),
+        throwsA(
+          isA<SyncPushException>()
+              .having((e) => e.isConflict, 'isConflict', isTrue)
+              .having((e) => e.serverState, 'serverState', isNull),
+        ),
+      );
+    });
   });
 
   group('pullChanges', () {

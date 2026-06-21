@@ -26,7 +26,7 @@ Status legend:
 | Last-write-wins | ✅ | `LastWriteWinsResolver`. |
 | Field merge | 🧩 | Write a `ConflictResolver` that merges fields — the interface hands you `(local, remote)`. |
 | User-assisted | 🧩 | A resolver can stash both versions and surface a UI; the engine just calls `resolve(local, remote)`. |
-| Push-side (409) conflicts | ⚠️ | Surfaces as `SyncPushException` + retry; no push-side resolver in v1. |
+| Push-side (409) conflicts | ✅ | An adapter throws `SyncPushException(isConflict: true, serverState: …)` (the REST adapter maps HTTP 409). The push pipeline resolves it with the table's `ConflictResolver`, applies the merge locally, rewrites the queued payload, and re-pushes once — then backs off if it still fails. |
 
 ## 3. Queue management
 | Concern | Status | How |
@@ -45,7 +45,7 @@ Status legend:
 ## 5. Data consistency
 | Concern | Status | How |
 |---|---|---|
-| Stale reads | ⚠️ | Reads come from the local cache (fast, offline) and converge on pull. Per-row `is_synced` / `sync_status` expose freshness. |
+| Stale reads | ✅ | Per-row freshness via `rowFreshness(row)` (synced vs optimistic-pending); table-level freshness via `SyncEngine.tableSyncedAt(table)` + `StalenessPolicy.isStale(...)` to drive a refresh or "showing cached data" banner. Reads are always read-your-writes (the local cache holds pending edits). |
 | Overselling / double-booking | 🧩 | Invariant enforcement (stock checks) is server-authoritative; the engine surfaces conflicts, your domain decides. |
 
 ## 6. Pagination
