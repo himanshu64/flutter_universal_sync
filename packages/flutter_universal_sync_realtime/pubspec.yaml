@@ -1,0 +1,21 @@
+name: flutter_universal_sync_realtime
+description: Real-time WebSocket/SSE channel for the flutter_universal_sync family — applies live server-push row events to a local store, reconnecting with backoff.
+version: 0.1.0
+homepage: https://github.com/REPLACE_ME/flutter_universal_sync
+repository: https://github.com/REPLACE_ME/flutter_universal_sync
+issue_tracker: https://github.com/REPLACE_ME/flutter_universal_sync/issues
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  flutter_universal_sync_core: ^0.2.0
+
+dev_dependencies:
+  coverage: ^1.8.0
+  lints: ^4.0.0
+  test: ^1.25.0
+
+dependency_overrides:
+  flutter_universal_sync_core:
+    path: ../flutter_universal_sync_core
