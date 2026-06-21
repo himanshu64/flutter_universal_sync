@@ -71,6 +71,30 @@ void main() {
       expect(req.headers['authorization'], 'Bearer xyz');
     });
 
+    test('sends an Idempotency-Key (the queue entry id) by default', () async {
+      late http.Request req;
+      final a = adapter(MockClient((r) async {
+        req = r;
+        return http.Response('{}', 201);
+      }));
+      await a.pushChange(entry(SyncOperation.insert));
+      expect(req.headers['idempotency-key'], 'q1');
+    });
+
+    test('omits the Idempotency-Key when disabled', () async {
+      late http.Request req;
+      final a = RestSyncAdapter(
+        baseUrl: Uri.parse('https://api.test/v1'),
+        idempotencyKeys: false,
+        client: MockClient((r) async {
+          req = r;
+          return http.Response('{}', 201);
+        }),
+      );
+      await a.pushChange(entry(SyncOperation.insert));
+      expect(req.headers.containsKey('idempotency-key'), isFalse);
+    });
+
     test('non-2xx → SyncPushException', () async {
       final a = adapter(MockClient((r) async => http.Response('nope', 500)));
       expect(

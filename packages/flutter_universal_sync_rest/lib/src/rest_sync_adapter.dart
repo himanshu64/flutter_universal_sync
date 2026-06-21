@@ -22,11 +22,17 @@ class RestSyncAdapter implements RemoteSyncAdapter {
     required this.baseUrl,
     http.Client? client,
     Map<String, String> Function()? headers,
+    this.idempotencyKeys = true,
   })  : _client = client ?? http.Client(),
         _headers = headers;
 
   /// Root URL of the backend, e.g. `https://api.example.com/v1`.
   final Uri baseUrl;
+
+  /// When `true` (default), each push sends an `Idempotency-Key` header set to
+  /// the (stable) queue-entry id. A re-push after a crash carries the same key,
+  /// so an idempotency-aware backend deduplicates it instead of double-applying.
+  final bool idempotencyKeys;
 
   final http.Client _client;
   final Map<String, String> Function()? _headers;
@@ -36,6 +42,7 @@ class RestSyncAdapter implements RemoteSyncAdapter {
     final headers = {
       ...?_headers?.call(),
       'content-type': 'application/json',
+      if (idempotencyKeys) 'idempotency-key': entry.id,
     };
     http.Response res;
     try {
