@@ -16,7 +16,8 @@ import 'package:sqflite_common/sqlite_api.dart';
 /// Domain tables (the rows you sync) are **yours** to create; the adapter
 /// never creates them. Call [validateSchema] after creating them to confirm
 /// they carry the required [SyncColumns].
-class SqfliteSyncAdapter implements LocalDatabaseAdapter, PurgeableAdapter {
+class SqfliteSyncAdapter
+    implements LocalDatabaseAdapter, PurgeableAdapter, PaginatedAdapter {
   /// Creates an adapter that opens [path] via [databaseFactory].
   ///
   /// For tests pass `databaseFactoryFfi` and
@@ -335,6 +336,47 @@ class SqfliteSyncAdapter implements LocalDatabaseAdapter, PurgeableAdapter {
       );
     }
     return removed;
+  }
+
+  @override
+  Future<PageResult> getPage(
+    String table, {
+    int limit = 20,
+    String orderBy = SyncColumns.updatedAt,
+    bool descending = true,
+    PageCursor? after,
+    bool includeDeleted = false,
+  }) async {
+    final dir = descending ? 'DESC' : 'ASC';
+    final op = descending ? '<' : '>';
+    final clauses = <String>[];
+    final args = <Object?>[];
+    if (!includeDeleted) clauses.add('${SyncColumns.deletedAt} IS NULL');
+    if (after != null) {
+      // Keyset seek: row sorts strictly after the cursor (value, id).
+      clauses.add(
+        '($orderBy $op ? OR ($orderBy = ? AND ${SyncColumns.id} $op ?))',
+      );
+      args
+        ..add(after.value)
+        ..add(after.value)
+        ..add(after.id);
+    }
+    final rows = await _exec.query(
+      table,
+      where: clauses.isEmpty ? null : clauses.join(' AND '),
+      whereArgs: args.isEmpty ? null : args,
+      orderBy: '$orderBy $dir, ${SyncColumns.id} $dir',
+      limit: limit,
+    );
+    final list = rows.map(Map<String, dynamic>.from).toList();
+    final next = list.length == limit
+        ? PageCursor(
+            value: list.last[orderBy],
+            id: list.last[SyncColumns.id] as String,
+          )
+        : null;
+    return PageResult(rows: list, nextCursor: next);
   }
 
   @override

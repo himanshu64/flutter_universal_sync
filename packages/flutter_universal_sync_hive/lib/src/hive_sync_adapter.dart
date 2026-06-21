@@ -14,7 +14,8 @@ import 'package:hive/hive.dart';
 /// Schema is tracked in memory (Hive can't introspect "columns"); call
 /// [registerTable] for each domain table before [validateSchema], the same
 /// way the shared contract suite does.
-class HiveSyncAdapter implements LocalDatabaseAdapter, PurgeableAdapter {
+class HiveSyncAdapter
+    implements LocalDatabaseAdapter, PurgeableAdapter, PaginatedAdapter {
   /// Creates an adapter whose Hive data lives under [directory].
   ///
   /// Pass a 32-byte [encryptionKey] to store every box (domain rows, the sync
@@ -277,6 +278,29 @@ class HiveSyncAdapter implements LocalDatabaseAdapter, PurgeableAdapter {
       removed++;
     }
     return removed;
+  }
+
+  @override
+  Future<PageResult> getPage(
+    String table, {
+    int limit = 20,
+    String orderBy = SyncColumns.updatedAt,
+    bool descending = true,
+    PageCursor? after,
+    bool includeDeleted = false,
+  }) async {
+    final box = await _domainBox(table);
+    final rows = box.values.map(_decode);
+    final visible = includeDeleted
+        ? rows
+        : rows.where((r) => r[SyncColumns.deletedAt] == null);
+    return paginateRows(
+      visible,
+      limit: limit,
+      orderBy: orderBy,
+      descending: descending,
+      after: after,
+    );
   }
 
   @override

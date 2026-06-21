@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 — 2026-06-21
+
+### Added
+- Implements `PaginatedAdapter` (`getPage`) — SQL keyset pagination
+  (`WHERE (orderBy,id) < cursor ... LIMIT n`), stable under inserts/deletes.
+
 ## 0.1.1 — 2026-06-21
 
 ### Added

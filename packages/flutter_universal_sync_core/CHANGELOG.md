@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 — 2026-06-21
+
+### Added
+- `PaginatedAdapter` — optional capability for **keyset** (seek) pagination of
+  the local store: `getPage(table, {limit, orderBy, descending, after,
+  includeDeleted})` returns a `PageResult` (rows + `nextCursor`). Keyset
+  anchoring is stable under concurrent inserts/deletes — no offset drift, so no
+  duplicated/skipped rows ("stale reads"). `InMemoryAdapter` implements it.
+- `PageResult` / `PageCursor` value types and the shared `paginateRows` helper
+  (used by stores without a query engine).
+
 ## 0.2.1 — 2026-06-21
 
 ### Added

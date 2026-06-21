@@ -1,6 +1,9 @@
 import '../adapters/local_database_adapter.dart';
 import '../cache/purgeable_adapter.dart';
 import '../entities/sync_queue_entry.dart';
+import '../pagination/keyset.dart';
+import '../pagination/page.dart';
+import '../pagination/paginated_adapter.dart';
 import '../errors/sync_errors.dart';
 import '../schema/sync_columns.dart';
 
@@ -16,7 +19,8 @@ import '../schema/sync_columns.dart';
 ///             [registerTable] in tests before `validateSchema` is called)
 ///   _queue:   insertion-ordered list of queue entries
 ///   _meta:    engine `_sync_meta` key/value store
-class InMemoryAdapter implements LocalDatabaseAdapter, PurgeableAdapter {
+class InMemoryAdapter
+    implements LocalDatabaseAdapter, PurgeableAdapter, PaginatedAdapter {
   final Map<String, Map<String, Map<String, dynamic>>> _tables = {};
   final Map<String, Set<String>> _schemas = {};
   final List<SyncQueueEntry> _queue = [];
@@ -249,6 +253,28 @@ class InMemoryAdapter implements LocalDatabaseAdapter, PurgeableAdapter {
       removed++;
     }
     return removed;
+  }
+
+  @override
+  Future<PageResult> getPage(
+    String table, {
+    int limit = 20,
+    String orderBy = SyncColumns.updatedAt,
+    bool descending = true,
+    PageCursor? after,
+    bool includeDeleted = false,
+  }) async {
+    final rows = _tables[table]?.values ?? const <Map<String, dynamic>>[];
+    final visible = includeDeleted
+        ? rows
+        : rows.where((r) => r[SyncColumns.deletedAt] == null);
+    return paginateRows(
+      visible,
+      limit: limit,
+      orderBy: orderBy,
+      descending: descending,
+      after: after,
+    );
   }
 }
 
