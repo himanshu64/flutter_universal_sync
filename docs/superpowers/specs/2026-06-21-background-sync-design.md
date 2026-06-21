@@ -2,7 +2,7 @@
 
 > **Status:** design + implementation. Wraps the engine for headless,
 > OS-scheduled background sync.
-> **Predecessor:** [engine design](./2026-04-30-sync-engine-design.md).
+> **Predecessor:** the sync engine — `packages/flutter_universal_sync_engine/` (see its README).
 
 ## 1. Goal
 

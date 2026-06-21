@@ -15,7 +15,7 @@ import 'table_config.dart';
 /// hybrid (auto + explicit) drain loop, exposes a state-snapshot
 /// stream, owns push and pull pipelines.
 ///
-/// See `docs/superpowers/specs/2026-04-30-sync-engine-design.md`.
+/// See the package README for the design overview and known limitations.
 class SyncEngine {
   /// Public constructor. The engine uses a system clock internally.
   SyncEngine({

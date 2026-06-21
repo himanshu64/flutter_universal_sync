@@ -1,8 +1,6 @@
 /// Sync engine for the flutter_universal_sync family.
 ///
-/// See the spec at
-/// `docs/superpowers/specs/2026-04-30-sync-engine-design.md`
-/// and `README.md` for usage.
+/// See `README.md` for usage, the public API, and known limitations.
 library;
 
 export 'src/connectivity/connectivity_monitor.dart';

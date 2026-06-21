@@ -3,7 +3,7 @@
 > **Status:** design + skeletons. Plan 12 (REST) is shipped and verified.
 > Plans 8–11 (Firebase, Supabase, Appwrite, GraphQL) ship as mock-tested
 > skeletons here; live verification needs each backend's credentials.
-> **Predecessor:** [engine design](./2026-04-30-sync-engine-design.md).
+> **Predecessor:** the sync engine — `packages/flutter_universal_sync_engine/` (see its README).
 
 ## 1. What a remote adapter must do
 

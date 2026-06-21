@@ -3,7 +3,6 @@
 ## 0.2.0 — 2026-04-30
 
 Engine-support contract bumps. Required for `flutter_universal_sync_engine` 0.1.0.
-See spec `docs/superpowers/specs/2026-04-30-sync-engine-design.md` §4.
 
 ### Added
 - `SyncQueueEntry.nextRetryAt` field; round-trips through `toMap`/`fromMap`,

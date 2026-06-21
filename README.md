@@ -257,10 +257,12 @@ Try it: turn off Wi-Fi, add an item → watch it appear in `sync_queue` with `sy
 
 ## Docs
 
-Design specs and implementation plans live in [docs/superpowers/](docs/superpowers/):
+Cross-cutting design specs live in [docs/superpowers/](docs/superpowers/):
 
-- [core design](docs/superpowers/specs/2026-04-24-flutter-universal-sync-core-design.md) · [engine design](docs/superpowers/specs/2026-04-30-sync-engine-design.md)
-- Per-package READMEs: [core](packages/flutter_universal_sync_core/README.md) · [engine](packages/flutter_universal_sync_engine/README.md) (install, public API, idempotency note, known v1 limitations)
+- [remote-adapters design](docs/superpowers/specs/2026-06-21-remote-adapters-design.md) · [background design](docs/superpowers/specs/2026-06-21-background-sync-design.md)
+- The core and engine designs now live in their package READMEs:
+  [core](packages/flutter_universal_sync_core/README.md) · [engine](packages/flutter_universal_sync_engine/README.md)
+  (install, public API, idempotency note, known v1 limitations). Every package has its own README.
 
 ## License
 
