@@ -1,0 +1,61 @@
+name: Publish to pub.dev
+
+# Monorepo automated publishing via pub.dev + GitHub OIDC (no tokens/secrets).
+#
+# Trigger: push a per-package tag `<package>-v<version>`, e.g.
+#   git tag flutter_universal_sync_core-v0.3.0
+#   git push origin flutter_universal_sync_core-v0.3.0
+#
+# One-time setup per package (see RELEASING.md):
+#   1. Publish the first version manually (`dart pub publish`) to claim the name.
+#   2. On pub.dev → package → Admin → Automated publishing → enable
+#      "Publishing from GitHub Actions": repository `himanshu64/flutter_universal_sync`,
+#      tag pattern `<package>-v{{version}}`.
+
+on:
+  push:
+    tags:
+      - '*-v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # required: mints the OIDC token pub.dev verifies
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: '3.4.0'
+
+      - name: Resolve package and version from the tag
+        id: pkg
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          name="${tag%-v*}"          # strip trailing -v<version>
+          version="${tag##*-v}"      # keep the <version>
+          dir="packages/${name}"
+          if [ ! -f "${dir}/pubspec.yaml" ]; then
+            echo "::error::No package '${name}' (looked in ${dir}/pubspec.yaml)"
+            exit 1
+          fi
+          pubspec_version="$(awk '/^version:/{print $2; exit}' "${dir}/pubspec.yaml")"
+          if [ "${pubspec_version}" != "${version}" ]; then
+            echo "::error::Tag version '${version}' != pubspec version '${pubspec_version}'"
+            exit 1
+          fi
+          echo "dir=${dir}" >> "$GITHUB_OUTPUT"
+          echo "Publishing ${name} ${version}"
+
+      - name: Install dependencies
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: dart pub get
+
+      - name: Validate (dry run)
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: dart pub publish --dry-run
+
+      - name: Publish to pub.dev
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: dart pub publish --force

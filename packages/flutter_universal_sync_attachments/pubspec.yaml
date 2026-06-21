@@ -1,9 +1,9 @@
 name: flutter_universal_sync_attachments
 description: Resumable chunked media/attachment uploads for the flutter_universal_sync family — upload large files in chunks over an injectable HTTP client, resuming from a server-reported offset.
 version: 0.1.0
-homepage: https://github.com/REPLACE_ME/flutter_universal_sync
-repository: https://github.com/REPLACE_ME/flutter_universal_sync
-issue_tracker: https://github.com/REPLACE_ME/flutter_universal_sync/issues
+homepage: https://github.com/himanshu64/flutter_universal_sync
+repository: https://github.com/himanshu64/flutter_universal_sync
+issue_tracker: https://github.com/himanshu64/flutter_universal_sync/issues
 
 environment:
   sdk: ^3.4.0

@@ -1,9 +1,9 @@
 name: flutter_universal_sync_core
 description: Core contracts for the flutter_universal_sync offline-first sync package family. Defines the SyncEntity, adapter interfaces, conflict resolver, schema constants, and error hierarchy shared by every adapter package.
 version: 0.3.0
-homepage: https://github.com/REPLACE_ME/flutter_universal_sync
-repository: https://github.com/REPLACE_ME/flutter_universal_sync
-issue_tracker: https://github.com/REPLACE_ME/flutter_universal_sync/issues
+homepage: https://github.com/himanshu64/flutter_universal_sync
+repository: https://github.com/himanshu64/flutter_universal_sync
+issue_tracker: https://github.com/himanshu64/flutter_universal_sync/issues
 
 environment:
   sdk: ^3.4.0
