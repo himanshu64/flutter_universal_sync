@@ -10,6 +10,10 @@
   duplicated/skipped rows ("stale reads"). `InMemoryAdapter` implements it.
 - `PageResult` / `PageCursor` value types and the shared `paginateRows` helper
   (used by stores without a query engine).
+- `NetworkState` (offline / metered / unmetered) and `ReachabilityMonitor` —
+  refines a raw OS connectivity stream into a *confirmed* one, optionally
+  verifying real internet with an injected probe (catches captive portals) and
+  de-duplicating. Lets callers defer heavy transfers on metered links.
 
 ## 0.2.1 — 2026-06-21
 
