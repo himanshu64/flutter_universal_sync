@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.2 — 2026-06-21
+
+### Added
+- Implements `PaginatedAdapter` (`getPage`) — SQL keyset pagination
+  (`WHERE (orderBy,id) < cursor ... LIMIT n`), stable under inserts/deletes.
+
+## 0.1.1 — 2026-06-21
+
+### Added
+- Implements `PurgeableAdapter` (`purgeSynced`) for cache eviction — hard-deletes
+  synced domain rows by age and/or keep-latest count, never touching pending rows.
+
 ## 0.1.0 — 2026-06-21
 
 Initial release. sqflite `LocalDatabaseAdapter` for the

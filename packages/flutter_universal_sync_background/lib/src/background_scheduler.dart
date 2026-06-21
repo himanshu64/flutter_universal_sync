@@ -4,10 +4,13 @@
 /// package is plugin-free, so the concrete scheduler (in your app) translates
 /// these to the platform API.
 class BackgroundConstraints {
-  /// Creates constraints. Defaults: network required, no charging requirement.
+  /// Creates constraints. Defaults: network required; no charging requirement;
+  /// the OS should not run the job while the battery is low.
   const BackgroundConstraints({
     this.requiresNetwork = true,
     this.requiresCharging = false,
+    this.requiresBatteryNotLow = true,
+    this.requiresUnmeteredNetwork = false,
   });
 
   /// Whether any network connection must be available.
@@ -15,6 +18,15 @@ class BackgroundConstraints {
 
   /// Whether the device must be charging.
   final bool requiresCharging;
+
+  /// Whether the OS should defer the job while the battery is low
+  /// (WorkManager `setRequiresBatteryNotLow`). Saves battery by not waking on
+  /// low charge.
+  final bool requiresBatteryNotLow;
+
+  /// Whether the job requires an unmetered (Wi-Fi/Ethernet) connection — defer
+  /// heavy syncs off cellular.
+  final bool requiresUnmeteredNetwork;
 }
 
 /// Schedules and cancels OS-level periodic background sync.

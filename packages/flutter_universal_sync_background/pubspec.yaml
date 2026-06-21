@@ -1,6 +1,6 @@
 name: flutter_universal_sync_background
 description: Headless background sync for the flutter_universal_sync family — runs the engine from an OS-scheduled background isolate (WorkManager / BGTaskScheduler).
-version: 0.1.0
+version: 0.2.0
 homepage: https://github.com/REPLACE_ME/flutter_universal_sync
 repository: https://github.com/REPLACE_ME/flutter_universal_sync
 issue_tracker: https://github.com/REPLACE_ME/flutter_universal_sync/issues

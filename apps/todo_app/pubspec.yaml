@@ -1,0 +1,39 @@
+name: todo_app
+description: "Offline-first Todo — Clean Architecture on flutter_universal_sync"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  flutter_universal_sync_core:
+    path: ../../packages/flutter_universal_sync_core
+  flutter_universal_sync_engine:
+    path: ../../packages/flutter_universal_sync_engine
+  flutter_universal_sync_hive:
+    path: ../../packages/flutter_universal_sync_hive
+  flutter_universal_sync_rest:
+    path: ../../packages/flutter_universal_sync_rest
+  connectivity_plus: ^6.0.0
+  path_provider: ^2.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+# Engine/hive/rest depend on core ^0.2.0 from pub.dev; pin them all to the
+# local path so the unpublished family resolves in this monorepo.
+dependency_overrides:
+  flutter_universal_sync_core:
+    path: ../../packages/flutter_universal_sync_core
+  flutter_universal_sync_engine:
+    path: ../../packages/flutter_universal_sync_engine
+
+flutter:
+  uses-material-design: true

@@ -1,5 +1,22 @@
 # flutter_universal_sync
 
+<p align="center">
+  <img src="assets/feature.svg" alt="flutter_universal_sync — offline-first, backend-agnostic, storage-agnostic sync for Flutter" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/himanshu64/flutter_universal_sync/actions/workflows/core.yml"><img src="https://github.com/himanshu64/flutter_universal_sync/actions/workflows/core.yml/badge.svg" alt="core CI"></a>
+  <a href="https://github.com/himanshu64/flutter_universal_sync/actions/workflows/engine.yml"><img src="https://github.com/himanshu64/flutter_universal_sync/actions/workflows/engine.yml/badge.svg" alt="engine CI"></a>
+  <img src="https://img.shields.io/badge/coverage-%E2%89%A595%25-brightgreen" alt="coverage ≥95%">
+  <br>
+  <a href="https://pub.dev/packages/flutter_universal_sync_core"><img src="https://img.shields.io/pub/v/flutter_universal_sync_core?label=core&logo=dart&color=0175C2" alt="pub: core"></a>
+  <a href="https://pub.dev/packages/flutter_universal_sync_engine"><img src="https://img.shields.io/pub/v/flutter_universal_sync_engine?label=engine&logo=dart&color=0175C2" alt="pub: engine"></a>
+  <img src="https://img.shields.io/badge/Dart-%5E3.4-0175C2?logo=dart&logoColor=white" alt="Dart ^3.4">
+  <img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter 3.x">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/PRs-welcome-ff69b4" alt="PRs welcome">
+</p>
+
 Offline-first, backend-agnostic, storage-agnostic sync for Flutter — a federated package family. Write locally, the engine drains a queue to your backend with retry/backoff, pulls deltas, and resolves conflicts. Monorepo.
 
 ```
@@ -25,9 +42,9 @@ your app ─▶ repository ─▶ LocalDatabaseAdapter (sqflite / drift / hive /
 
 | Package | What it is | Status |
 |---|---|---|
-| [`flutter_universal_sync_core`](packages/flutter_universal_sync_core/) | Contracts: `SyncEntity`, adapter interfaces, conflict resolvers, schema, errors, shared contract test-suite | 0.2.0 |
-| [`flutter_universal_sync_engine`](packages/flutter_universal_sync_engine/) | The orchestration runtime: `SyncEngine`, push/pull pipelines, drain loop, state stream | 0.1.0 |
-| [`flutter_universal_sync_background`](packages/flutter_universal_sync_background/) | Headless background sync (WorkManager / BGTaskScheduler) — Plan 3 | 0.1.0 |
+| [`flutter_universal_sync_core`](packages/flutter_universal_sync_core/) | Contracts + capabilities: adapter interfaces, conflict resolvers, schema, errors, cache-eviction (`PurgeableAdapter`), keyset pagination (`PaginatedAdapter`), `ReachabilityMonitor`, `SubmitGuard`, `SchemaMigrator`, shared contract test-suite | 0.3.0 |
+| [`flutter_universal_sync_engine`](packages/flutter_universal_sync_engine/) | The orchestration runtime: `SyncEngine`, push/pull pipelines, drain loop, FK-aware ordering, state stream | 0.1.1 |
+| [`flutter_universal_sync_background`](packages/flutter_universal_sync_background/) | Headless background sync (WorkManager / BGTaskScheduler) + battery-gated runs | 0.2.0 |
 
 ### Local adapters (`LocalDatabaseAdapter`)
 
@@ -35,9 +52,9 @@ All run core's shared `runLocalDatabaseAdapterContract` suite.
 
 | Package | Backend | Status |
 |---|---|---|
-| [`…_sqflite`](packages/flutter_universal_sync_sqflite/) | SQLite (sqflite_common) | 0.1.0 — contract-verified, 100% cov |
+| [`…_sqflite`](packages/flutter_universal_sync_sqflite/) | SQLite (sqflite_common) | 0.1.1 — contract-verified, 100% cov |
 | [`…_drift`](packages/flutter_universal_sync_drift/) | drift (raw SQL, no codegen) | 0.1.0 — contract-verified, 96% cov |
-| [`…_hive`](packages/flutter_universal_sync_hive/) | Hive | 0.1.0 — contract-verified, 98% cov |
+| [`…_hive`](packages/flutter_universal_sync_hive/) | Hive (optional AES-256 at rest) | 0.1.1 — contract-verified, 98% cov |
 | [`…_objectbox`](packages/flutter_universal_sync_objectbox/) | ObjectBox | 0.1.0 — reference skeleton (needs codegen + native lib) |
 
 ### Remote adapters (`RemoteSyncAdapter`)
@@ -51,6 +68,19 @@ See [Writing an adapter](#writing-an-adapter) for the shared conventions.
 | [`…_appwrite`](packages/flutter_universal_sync_appwrite/) | Appwrite Databases | 0.1.0 — mock-tested, 100% cov |
 | [`…_graphql`](packages/flutter_universal_sync_graphql/) | any GraphQL API | 0.1.0 — mock + live (SpaceX), 100% cov |
 | [`…_firebase`](packages/flutter_universal_sync_firebase/) | Cloud Firestore (REST) | 0.1.0 — mock-tested, 98% cov |
+
+### Capability packages
+
+Optional add-ons, each behind a stable interface — bring in only what you need.
+
+| Package | What it adds | Status |
+|---|---|---|
+| [`…_crdt`](packages/flutter_universal_sync_crdt/) | `LwwMapResolver` — per-field LWW-Element-Map CRDT `ConflictResolver` | 0.1.0 — 100% cov |
+| [`…_attachments`](packages/flutter_universal_sync_attachments/) | `ChunkedUploader` + `AttachmentQueue` — resumable chunked media uploads | 0.1.0 — 100% cov |
+| [`…_realtime`](packages/flutter_universal_sync_realtime/) | `RealtimeChannel` — WebSocket/SSE server-push applied to the local store, reconnect-with-backoff | 0.1.0 — 100% cov |
+| [`…_auth`](packages/flutter_universal_sync_auth/) | `AuthSession` — offline-first auth: cached token survives offline, refreshes on reconnect, Bearer headers | 0.1.0 — 100% cov |
+
+Plus, built into existing packages: **idempotency-key** headers (REST), **encrypted-at-rest** storage (Hive), **FK-aware ordering** (engine `dependencies`), **cache eviction** + **keyset pagination** (sqflite/Hive/in-memory), **network state detection** (`ReachabilityMonitor`), **duplicate-submit guard** (`SubmitGuard`), **schema migrations** (`SchemaMigrator`), and **battery-gated background runs**. See [CHALLENGES.md](CHALLENGES.md).
 
 A runnable end-to-end example lives in [`examples/sync_demo`](examples/sync_demo/) (Flutter UI + demo-grade sqflite & REST adapters + the Node test backend in [`examples/test-backend`](examples/test-backend/)).
 
@@ -293,6 +323,13 @@ Try it: turn off Wi-Fi, add an item → watch it appear in `sync_queue` with `sy
 > On Android/iOS the server runs on the device — open `localhost:8090` in a browser on the device, or forward the port to your host (e.g. `adb forward tcp:8090 tcp:8090`).
 
 ## Docs
+
+- **[Offline-first challenges → coverage map](CHALLENGES.md)** — the 19 hard
+  problems of offline sync (conflicts, queues, temp IDs, idempotency, schema
+  migration, security, background limits, …) and exactly what this family
+  handles built-in, partially, or leaves to your app.
+- **[Sample apps](apps/)** — four runnable apps (Clean Architecture · MVVM ·
+  VIPER) on the same stack, plus a [battery-performance guide](apps/BATTERY_PERFORMANCE.md).
 
 The design lives with the code — each package has its own README:
 [core](packages/flutter_universal_sync_core/README.md) ·

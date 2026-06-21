@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.3.0 — 2026-06-21
+
+### Added
+- `PaginatedAdapter` — optional capability for **keyset** (seek) pagination of
+  the local store: `getPage(table, {limit, orderBy, descending, after,
+  includeDeleted})` returns a `PageResult` (rows + `nextCursor`). Keyset
+  anchoring is stable under concurrent inserts/deletes — no offset drift, so no
+  duplicated/skipped rows ("stale reads"). `InMemoryAdapter` implements it.
+- `PageResult` / `PageCursor` value types and the shared `paginateRows` helper
+  (used by stores without a query engine).
+- `NetworkState` (offline / metered / unmetered) and `ReachabilityMonitor` —
+  refines a raw OS connectivity stream into a *confirmed* one, optionally
+  verifying real internet with an injected probe (catches captive portals) and
+  de-duplicating. Lets callers defer heavy transfers on metered links.
+- `SubmitGuard` — prevents duplicate submissions ("triple-tap Save"): keyed
+  single-flight coalescing plus a post-success cooldown. Failures don't cool
+  down, so a failed submit retries immediately.
+- `SchemaMigrator` / `SchemaMigration` — versioned local-schema migrations.
+  Runs pending migrations in ascending order, each inside the adapter's
+  transaction with the version bump (stored in the meta KV), so a failed step
+  rolls back and re-runs next launch.
+- `SyncPushException` gains `isConflict` + `serverState` so adapters can report
+  a version conflict (HTTP 409) with the server's current row, enabling
+  **push-side** conflict resolution in the engine.
+- `rowFreshness` + `StalenessPolicy` (freshness) — classify a cached row as
+  synced/pending and decide whether table data is too old to trust.
+
+## 0.2.1 — 2026-06-21
+
+### Added
+- `PurgeableAdapter` — optional capability interface for cache eviction,
+  separate from the core adapter contract so adapters opt in without breaking
+  the others. `purgeSynced(table, {olderThan, keepLatest})` hard-removes synced
+  rows only (never pending), returning the count removed.
+- `CacheEvictor` — runs a `maxAge`/`maxRows` eviction policy across tables on a
+  `PurgeableAdapter` (injectable `now` for tests).
+- `InMemoryAdapter` now implements `PurgeableAdapter`.
+
 ## 0.2.0 — 2026-04-30
 
 Engine-support contract bumps. Required for `flutter_universal_sync_engine` 0.1.0.

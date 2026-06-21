@@ -22,11 +22,17 @@ class RestSyncAdapter implements RemoteSyncAdapter {
     required this.baseUrl,
     http.Client? client,
     Map<String, String> Function()? headers,
+    this.idempotencyKeys = true,
   })  : _client = client ?? http.Client(),
         _headers = headers;
 
   /// Root URL of the backend, e.g. `https://api.example.com/v1`.
   final Uri baseUrl;
+
+  /// When `true` (default), each push sends an `Idempotency-Key` header set to
+  /// the (stable) queue-entry id. A re-push after a crash carries the same key,
+  /// so an idempotency-aware backend deduplicates it instead of double-applying.
+  final bool idempotencyKeys;
 
   final http.Client _client;
   final Map<String, String> Function()? _headers;
@@ -36,6 +42,7 @@ class RestSyncAdapter implements RemoteSyncAdapter {
     final headers = {
       ...?_headers?.call(),
       'content-type': 'application/json',
+      if (idempotencyKeys) 'idempotency-key': entry.id,
     };
     http.Response res;
     try {
@@ -61,11 +68,32 @@ class RestSyncAdapter implements RemoteSyncAdapter {
     } catch (e) {
       throw SyncPushException(queueEntryId: entry.id, cause: e);
     }
+    if (res.statusCode == 409) {
+      // Version conflict — surface the server's current row (if the backend
+      // returned it as JSON) so the engine can resolve and re-push.
+      throw SyncPushException(
+        queueEntryId: entry.id,
+        cause: 'HTTP 409: ${res.body}',
+        isConflict: true,
+        serverState: _tryDecodeRow(res.body),
+      );
+    }
     if (res.statusCode >= 400) {
       throw SyncPushException(
         queueEntryId: entry.id,
         cause: 'HTTP ${res.statusCode}: ${res.body}',
       );
+    }
+  }
+
+  /// Decodes a JSON object body into a row map, or null if the body is not a
+  /// JSON object (the conflict still surfaces, just without server state).
+  Map<String, dynamic>? _tryDecodeRow(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
     }
   }
 

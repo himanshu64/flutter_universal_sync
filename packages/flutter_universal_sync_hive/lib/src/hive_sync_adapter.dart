@@ -14,12 +14,20 @@ import 'package:hive/hive.dart';
 /// Schema is tracked in memory (Hive can't introspect "columns"); call
 /// [registerTable] for each domain table before [validateSchema], the same
 /// way the shared contract suite does.
-class HiveSyncAdapter implements LocalDatabaseAdapter {
+class HiveSyncAdapter
+    implements LocalDatabaseAdapter, PurgeableAdapter, PaginatedAdapter {
   /// Creates an adapter whose Hive data lives under [directory].
-  HiveSyncAdapter({required this.directory});
+  ///
+  /// Pass a 32-byte [encryptionKey] to store every box (domain rows, the sync
+  /// queue, and meta) AES-256 encrypted at rest. Keep that key in secure
+  /// storage (Keychain / Keystore via `flutter_secure_storage`), never in code.
+  HiveSyncAdapter({required this.directory, List<int>? encryptionKey})
+      : _cipher = encryptionKey == null ? null : HiveAesCipher(encryptionKey);
 
   /// Filesystem directory Hive initialises against.
   final String directory;
+
+  final HiveCipher? _cipher;
 
   static const _queueBox = '__sync_queue';
   static const _metaBox = '__sync_meta';
@@ -42,8 +50,8 @@ class HiveSyncAdapter implements LocalDatabaseAdapter {
   @override
   Future<void> init() async {
     Hive.init(directory);
-    _queue = await Hive.openBox<String>(_queueBox);
-    _meta = await Hive.openBox<String>(_metaBox);
+    _queue = await Hive.openBox<String>(_queueBox, encryptionCipher: _cipher);
+    _meta = await Hive.openBox<String>(_metaBox, encryptionCipher: _cipher);
     _boxes[_queueBox] = _queue;
     _boxes[_metaBox] = _meta;
     // Resume the sequence past anything already persisted.
@@ -65,7 +73,7 @@ class HiveSyncAdapter implements LocalDatabaseAdapter {
     final name = 'dom_$table';
     final existing = _boxes[name];
     if (existing != null) return existing;
-    final box = await Hive.openBox<String>(name);
+    final box = await Hive.openBox<String>(name, encryptionCipher: _cipher);
     _boxes[name] = box;
     return box;
   }
@@ -236,6 +244,63 @@ class HiveSyncAdapter implements LocalDatabaseAdapter {
   @override
   Future<void> deleteMeta(String key) async {
     await _meta.delete(key);
+  }
+
+  @override
+  Future<int> purgeSynced(
+    String table, {
+    DateTime? olderThan,
+    int? keepLatest,
+  }) async {
+    if (olderThan == null && keepLatest == null) return 0;
+    final box = await _domainBox(table);
+
+    int updatedAt(Map<String, dynamic> r) =>
+        (r[SyncColumns.updatedAt] as int?) ?? 0;
+    bool synced(Map<String, dynamic> r) =>
+        r[SyncColumns.isSynced] == 1 || r[SyncColumns.syncStatus] == 'synced';
+
+    final syncedRows = box.keys
+        .map((k) => (key: k as String, row: _decode(box.get(k)!)))
+        .where((e) => synced(e.row))
+        .toList()
+      ..sort((a, b) => updatedAt(b.row).compareTo(updatedAt(a.row)));
+    final protected = keepLatest == null
+        ? const <String>{}
+        : syncedRows.take(keepLatest).map((e) => e.key).toSet();
+    final cutoff = olderThan?.toUtc().millisecondsSinceEpoch;
+
+    var removed = 0;
+    for (final e in syncedRows) {
+      if (protected.contains(e.key)) continue;
+      if (cutoff != null && updatedAt(e.row) >= cutoff) continue;
+      await box.delete(e.key);
+      removed++;
+    }
+    return removed;
+  }
+
+  @override
+  Future<PageResult> getPage(
+    String table, {
+    int limit = 20,
+    String orderBy = SyncColumns.updatedAt,
+    bool descending = true,
+    PageCursor? after,
+    bool includeDeleted = false,
+  }) async {
+    final box = await _domainBox(table);
+    final rows = box.values.map(_decode);
+    final visible = includeDeleted
+        ? rows
+        : rows.where((r) => r[SyncColumns.deletedAt] == null);
+    return paginateRows(
+      visible,
+      limit: limit,
+      orderBy: orderBy,
+      descending: descending,
+      after: after,
+    );
   }
 
   @override

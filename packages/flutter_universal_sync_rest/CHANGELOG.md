@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.2 — 2026-06-21
+
+### Added
+- HTTP `409` now throws `SyncPushException(isConflict: true, serverState: …)` —
+  the response body (if a JSON object) is surfaced as the server's current row,
+  so the engine can resolve the conflict and re-push.
+
+## 0.1.1 — 2026-06-21
+
+### Added
+- `idempotencyKeys` (default `true`): push sends an `Idempotency-Key` header set
+  to the stable queue-entry id, so a re-pushed entry deduplicates server-side.
+
 ## 0.1.0 — 2026-06-21
 
 Initial release. REST `RemoteSyncAdapter` for the `flutter_universal_sync`

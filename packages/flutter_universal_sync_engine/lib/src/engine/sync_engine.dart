@@ -4,6 +4,7 @@ import 'package:flutter_universal_sync_core/flutter_universal_sync_core.dart';
 import 'package:meta/meta.dart';
 
 import '../connectivity/connectivity_monitor.dart';
+import '../meta/meta_keys.dart';
 import '../pull/pull_pipeline.dart';
 import '../push/push_pipeline.dart';
 import '_clock.dart';
@@ -26,6 +27,7 @@ class SyncEngine {
     Duration drainInterval = const Duration(minutes: 5),
     Duration Function(int retryCount) backoff = defaultBackoff,
     IdGenerator? idGenerator,
+    Set<String> Function(SyncQueueEntry entry)? dependencies,
   }) : this._withClock(
           localDb: localDb,
           remote: remote,
@@ -34,6 +36,7 @@ class SyncEngine {
           drainInterval: drainInterval,
           backoff: backoff,
           idGenerator: idGenerator ?? UuidV4Generator(),
+          dependencies: dependencies,
           clock: Clock.systemClock,
         );
 
@@ -50,6 +53,7 @@ class SyncEngine {
     Duration drainInterval = const Duration(minutes: 5),
     Duration Function(int retryCount) backoff = defaultBackoff,
     IdGenerator? idGenerator,
+    Set<String> Function(SyncQueueEntry entry)? dependencies,
   }) : this._withClock(
           localDb: localDb,
           remote: remote,
@@ -58,6 +62,7 @@ class SyncEngine {
           drainInterval: drainInterval,
           backoff: backoff,
           idGenerator: idGenerator ?? UuidV4Generator(),
+          dependencies: dependencies,
           clock: clock,
         );
 
@@ -65,16 +70,21 @@ class SyncEngine {
     required this.localDb,
     required this.remote,
     required this.connectivity,
-    required this.tables,
+    required Map<String, TableConfig> tables,
     required this.drainInterval,
     required this.backoff,
     required this.idGenerator,
     required this.clock,
-  })  : _push = PushPipeline(
+    Set<String> Function(SyncQueueEntry entry)? dependencies,
+  })  : tables = tables, // ignore: prefer_initializing_formals
+        _push = PushPipeline(
           localDb: localDb,
           remote: remote,
           clock: clock,
           backoff: backoff,
+          dependencies: dependencies,
+          conflictResolverFor: (table) =>
+              (tables[table] ?? const TableConfig()).conflictResolver,
         ),
         _pull = PullPipeline(localDb: localDb, remote: remote),
         _stateController = StreamController<SyncStateSnapshot>.broadcast() {
@@ -226,6 +236,12 @@ class SyncEngine {
         for (final entry in tables.entries) {
           try {
             await _pull.pullTable(entry.key, entry.value);
+            // Record freshness for this table (even an empty pull means
+            // "up to date as of now") so reads can detect staleness.
+            await localDb.setMeta(
+              MetaKeys.lastPull(entry.key),
+              clock.now().toUtc().toIso8601String(),
+            );
           } catch (e) {
             lastError = e;
           }
@@ -266,6 +282,15 @@ class SyncEngine {
   Future<int> _countPending() async {
     final pending = await localDb.pendingSyncEntries();
     return pending.length;
+  }
+
+  /// When [table] was last successfully pulled (UTC), or null if never.
+  ///
+  /// Pair with a `StalenessPolicy` to decide whether the cached rows for a
+  /// table are too old to trust and a refresh should be shown or forced.
+  Future<DateTime?> tableSyncedAt(String table) async {
+    final raw = await localDb.getMeta(MetaKeys.lastPull(table));
+    return raw == null ? null : DateTime.parse(raw);
   }
 
   /// Disposes the engine. Cancels timer and connectivity subscription,

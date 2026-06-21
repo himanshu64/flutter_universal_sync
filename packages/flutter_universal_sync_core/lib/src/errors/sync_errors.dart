@@ -32,7 +32,16 @@ class SchemaValidationException extends SyncException {
 /// mean this halts the current sync batch; the entry remains in the queue.
 class SyncPushException extends SyncException {
   /// Creates a push exception.
-  SyncPushException({required this.queueEntryId, required this.cause});
+  ///
+  /// Set [isConflict] (and ideally [serverState]) when the push was rejected
+  /// because the server holds a newer version (e.g. HTTP 409) — the engine can
+  /// then resolve the conflict and re-push instead of just backing off.
+  SyncPushException({
+    required this.queueEntryId,
+    required this.cause,
+    this.isConflict = false,
+    this.serverState,
+  });
 
   /// The queue entry that failed.
   final String queueEntryId;
@@ -40,9 +49,15 @@ class SyncPushException extends SyncException {
   /// The underlying failure (network error, HTTP code, etc.).
   final Object cause;
 
+  /// Whether the failure is a version conflict (the server has a newer row).
+  final bool isConflict;
+
+  /// The server's current version of the row, when the backend returned it
+  /// alongside the conflict. Required for push-side conflict resolution.
+  final Map<String, dynamic>? serverState;
+
   @override
-  String get message =>
-      'Failed to push queue entry $queueEntryId: $cause';
+  String get message => 'Failed to push queue entry $queueEntryId: $cause';
 }
 
 /// Thrown by `RemoteSyncAdapter.pullChanges` implementations when fetching
@@ -74,6 +89,5 @@ class ConflictResolutionException extends SyncException {
   final Object cause;
 
   @override
-  String get message =>
-      'Conflict resolver failed for entity $entityId: $cause';
+  String get message => 'Conflict resolver failed for entity $entityId: $cause';
 }

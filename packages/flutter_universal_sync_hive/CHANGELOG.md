@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.2 — 2026-06-21
+
+### Added
+- Implements `PaginatedAdapter` (`getPage`) — keyset pagination over the box,
+  reusing core's `paginateRows`. Stable under inserts/deletes.
+
+## 0.1.1 — 2026-06-21
+
+### Added
+- Optional 32-byte `encryptionKey` — stores every box (domain rows, queue, meta)
+  AES-256 encrypted at rest via Hive's `HiveAesCipher`.
+- Implements `PurgeableAdapter` (`purgeSynced`) for cache eviction — hard-removes
+  synced domain rows by age and/or keep-latest count, never touching pending rows.
+
+
 ## 0.1.0 — 2026-06-21
 
 Initial release. Hive `LocalDatabaseAdapter` for the

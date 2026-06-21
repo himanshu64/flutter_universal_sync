@@ -1,5 +1,9 @@
 import '../adapters/local_database_adapter.dart';
+import '../cache/purgeable_adapter.dart';
 import '../entities/sync_queue_entry.dart';
+import '../pagination/keyset.dart';
+import '../pagination/page.dart';
+import '../pagination/paginated_adapter.dart';
 import '../errors/sync_errors.dart';
 import '../schema/sync_columns.dart';
 
@@ -15,7 +19,8 @@ import '../schema/sync_columns.dart';
 ///             [registerTable] in tests before `validateSchema` is called)
 ///   _queue:   insertion-ordered list of queue entries
 ///   _meta:    engine `_sync_meta` key/value store
-class InMemoryAdapter implements LocalDatabaseAdapter {
+class InMemoryAdapter
+    implements LocalDatabaseAdapter, PurgeableAdapter, PaginatedAdapter {
   final Map<String, Map<String, Map<String, dynamic>>> _tables = {};
   final Map<String, Set<String>> _schemas = {};
   final List<SyncQueueEntry> _queue = [];
@@ -216,6 +221,60 @@ class InMemoryAdapter implements LocalDatabaseAdapter {
   @override
   Future<void> deleteMeta(String key) async {
     _meta.remove(key);
+  }
+
+  @override
+  Future<int> purgeSynced(
+    String table, {
+    DateTime? olderThan,
+    int? keepLatest,
+  }) async {
+    if (olderThan == null && keepLatest == null) return 0;
+    final rows = _tables[table];
+    if (rows == null) return 0;
+
+    int updatedAt(Map<String, dynamic> r) =>
+        (r[SyncColumns.updatedAt] as int?) ?? 0;
+    bool synced(Map<String, dynamic> r) =>
+        r[SyncColumns.isSynced] == 1 || r[SyncColumns.syncStatus] == 'synced';
+
+    final syncedRows = rows.entries.where((e) => synced(e.value)).toList()
+      ..sort((a, b) => updatedAt(b.value).compareTo(updatedAt(a.value)));
+    final protected = keepLatest == null
+        ? const <String>{}
+        : syncedRows.take(keepLatest).map((e) => e.key).toSet();
+    final cutoff = olderThan?.toUtc().millisecondsSinceEpoch;
+
+    var removed = 0;
+    for (final e in syncedRows) {
+      if (protected.contains(e.key)) continue;
+      if (cutoff != null && updatedAt(e.value) >= cutoff) continue;
+      rows.remove(e.key);
+      removed++;
+    }
+    return removed;
+  }
+
+  @override
+  Future<PageResult> getPage(
+    String table, {
+    int limit = 20,
+    String orderBy = SyncColumns.updatedAt,
+    bool descending = true,
+    PageCursor? after,
+    bool includeDeleted = false,
+  }) async {
+    final rows = _tables[table]?.values ?? const <Map<String, dynamic>>[];
+    final visible = includeDeleted
+        ? rows
+        : rows.where((r) => r[SyncColumns.deletedAt] == null);
+    return paginateRows(
+      visible,
+      limit: limit,
+      orderBy: orderBy,
+      descending: descending,
+      after: after,
+    );
   }
 }
 
