@@ -16,7 +16,7 @@ import 'package:sqflite_common/sqlite_api.dart';
 /// Domain tables (the rows you sync) are **yours** to create; the adapter
 /// never creates them. Call [validateSchema] after creating them to confirm
 /// they carry the required [SyncColumns].
-class SqfliteSyncAdapter implements LocalDatabaseAdapter {
+class SqfliteSyncAdapter implements LocalDatabaseAdapter, PurgeableAdapter {
   /// Creates an adapter that opens [path] via [databaseFactory].
   ///
   /// For tests pass `databaseFactoryFfi` and
@@ -298,6 +298,43 @@ class SqfliteSyncAdapter implements LocalDatabaseAdapter {
       where: '${SyncMetaColumns.key} = ?',
       whereArgs: [key],
     );
+  }
+
+  @override
+  Future<int> purgeSynced(
+    String table, {
+    DateTime? olderThan,
+    int? keepLatest,
+  }) async {
+    if (olderThan == null && keepLatest == null) return 0;
+
+    // Synced rows only, newest first — never purge pending (unsynced) rows.
+    final synced = await _exec.query(
+      table,
+      where: '${SyncColumns.isSynced} = 1',
+      orderBy: '${SyncColumns.updatedAt} DESC',
+    );
+    final protected = keepLatest == null
+        ? const <String>{}
+        : synced
+            .take(keepLatest)
+            .map((r) => r[SyncColumns.id] as String)
+            .toSet();
+    final cutoff = olderThan?.toUtc().millisecondsSinceEpoch;
+
+    var removed = 0;
+    for (final row in synced) {
+      final id = row[SyncColumns.id] as String;
+      if (protected.contains(id)) continue;
+      final updatedAt = (row[SyncColumns.updatedAt] as int?) ?? 0;
+      if (cutoff != null && updatedAt >= cutoff) continue;
+      removed += await _exec.delete(
+        table,
+        where: '${SyncColumns.id} = ?',
+        whereArgs: [id],
+      );
+    }
+    return removed;
   }
 
   @override

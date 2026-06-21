@@ -5,6 +5,8 @@ library;
 
 export 'src/adapters/local_database_adapter.dart';
 export 'src/adapters/remote_sync_adapter.dart';
+export 'src/cache/cache_evictor.dart';
+export 'src/cache/purgeable_adapter.dart';
 export 'src/conflict/client_priority_resolver.dart';
 export 'src/conflict/conflict_resolver.dart';
 export 'src/conflict/last_write_wins_resolver.dart';

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 — 2026-06-21
+
+### Added
+- `PurgeableAdapter` — optional capability interface for cache eviction,
+  separate from the core adapter contract so adapters opt in without breaking
+  the others. `purgeSynced(table, {olderThan, keepLatest})` hard-removes synced
+  rows only (never pending), returning the count removed.
+- `CacheEvictor` — runs a `maxAge`/`maxRows` eviction policy across tables on a
+  `PurgeableAdapter` (injectable `now` for tests).
+- `InMemoryAdapter` now implements `PurgeableAdapter`.
+
 ## 0.2.0 — 2026-04-30
 
 Engine-support contract bumps. Required for `flutter_universal_sync_engine` 0.1.0.

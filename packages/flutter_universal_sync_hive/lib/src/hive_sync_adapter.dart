@@ -14,7 +14,7 @@ import 'package:hive/hive.dart';
 /// Schema is tracked in memory (Hive can't introspect "columns"); call
 /// [registerTable] for each domain table before [validateSchema], the same
 /// way the shared contract suite does.
-class HiveSyncAdapter implements LocalDatabaseAdapter {
+class HiveSyncAdapter implements LocalDatabaseAdapter, PurgeableAdapter {
   /// Creates an adapter whose Hive data lives under [directory].
   ///
   /// Pass a 32-byte [encryptionKey] to store every box (domain rows, the sync
@@ -243,6 +243,40 @@ class HiveSyncAdapter implements LocalDatabaseAdapter {
   @override
   Future<void> deleteMeta(String key) async {
     await _meta.delete(key);
+  }
+
+  @override
+  Future<int> purgeSynced(
+    String table, {
+    DateTime? olderThan,
+    int? keepLatest,
+  }) async {
+    if (olderThan == null && keepLatest == null) return 0;
+    final box = await _domainBox(table);
+
+    int updatedAt(Map<String, dynamic> r) =>
+        (r[SyncColumns.updatedAt] as int?) ?? 0;
+    bool synced(Map<String, dynamic> r) =>
+        r[SyncColumns.isSynced] == 1 || r[SyncColumns.syncStatus] == 'synced';
+
+    final syncedRows = box.keys
+        .map((k) => (key: k as String, row: _decode(box.get(k)!)))
+        .where((e) => synced(e.row))
+        .toList()
+      ..sort((a, b) => updatedAt(b.row).compareTo(updatedAt(a.row)));
+    final protected = keepLatest == null
+        ? const <String>{}
+        : syncedRows.take(keepLatest).map((e) => e.key).toSet();
+    final cutoff = olderThan?.toUtc().millisecondsSinceEpoch;
+
+    var removed = 0;
+    for (final e in syncedRows) {
+      if (protected.contains(e.key)) continue;
+      if (cutoff != null && updatedAt(e.row) >= cutoff) continue;
+      await box.delete(e.key);
+      removed++;
+    }
+    return removed;
   }
 
   @override
