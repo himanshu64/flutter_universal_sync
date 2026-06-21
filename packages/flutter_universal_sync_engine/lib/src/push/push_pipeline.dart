@@ -35,6 +35,7 @@ class PushPipeline {
     required this.remote,
     required this.clock,
     required this.backoff,
+    this.dependencies,
   });
 
   /// Local store the queue is drained from.
@@ -49,14 +50,37 @@ class PushPipeline {
   /// Maps a retry count to the delay before the next attempt.
   final Duration Function(int retryCount) backoff;
 
+  /// Optional FK-aware ordering: returns the entity ids an entry depends on.
+  /// The entry is **deferred** (held to a later cycle) while any of those
+  /// entities still has an unsynced queue entry — so e.g. a `task` insert
+  /// waits until its `project` has been acknowledged. Cyclic dependencies are
+  /// not resolved (both sides wait); declare acyclic relationships.
+  final Set<String> Function(SyncQueueEntry entry)? dependencies;
+
   /// Runs one drain pass and returns its aggregate result.
   Future<PushDrainResult> drain() async {
-    final entries = await localDb.pendingSyncEntries(readyAt: clock.now());
+    final ready = await localDb.pendingSyncEntries(readyAt: clock.now());
 
     // Compute total pending excluding what we'll attempt this cycle to
     // report skippedDueToBackoff. The set complement of `entries`
     // against the unfiltered queue equals "deferred by backoff".
     final allPending = await localDb.pendingSyncEntries();
+
+    // FK-aware deferral: hold any ready entry whose dependency entities still
+    // have unsynced work. Those entries simply remain pending for a later cycle.
+    final List<SyncQueueEntry> entries;
+    final deps = dependencies;
+    if (deps == null) {
+      entries = ready;
+    } else {
+      final pendingEntities = allPending.map((e) => e.entityId).toSet();
+      entries = ready.where((e) {
+        return !deps(
+          e,
+        ).any((d) => d != e.entityId && pendingEntities.contains(d));
+      }).toList();
+    }
+
     final readyIds = entries.map((e) => e.id).toSet();
     final skipped = allPending.where((e) => !readyIds.contains(e.id)).length;
 

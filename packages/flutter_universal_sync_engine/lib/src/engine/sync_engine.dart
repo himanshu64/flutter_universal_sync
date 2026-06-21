@@ -26,6 +26,7 @@ class SyncEngine {
     Duration drainInterval = const Duration(minutes: 5),
     Duration Function(int retryCount) backoff = defaultBackoff,
     IdGenerator? idGenerator,
+    Set<String> Function(SyncQueueEntry entry)? dependencies,
   }) : this._withClock(
           localDb: localDb,
           remote: remote,
@@ -34,6 +35,7 @@ class SyncEngine {
           drainInterval: drainInterval,
           backoff: backoff,
           idGenerator: idGenerator ?? UuidV4Generator(),
+          dependencies: dependencies,
           clock: Clock.systemClock,
         );
 
@@ -50,6 +52,7 @@ class SyncEngine {
     Duration drainInterval = const Duration(minutes: 5),
     Duration Function(int retryCount) backoff = defaultBackoff,
     IdGenerator? idGenerator,
+    Set<String> Function(SyncQueueEntry entry)? dependencies,
   }) : this._withClock(
           localDb: localDb,
           remote: remote,
@@ -58,6 +61,7 @@ class SyncEngine {
           drainInterval: drainInterval,
           backoff: backoff,
           idGenerator: idGenerator ?? UuidV4Generator(),
+          dependencies: dependencies,
           clock: clock,
         );
 
@@ -70,11 +74,13 @@ class SyncEngine {
     required this.backoff,
     required this.idGenerator,
     required this.clock,
+    Set<String> Function(SyncQueueEntry entry)? dependencies,
   })  : _push = PushPipeline(
           localDb: localDb,
           remote: remote,
           clock: clock,
           backoff: backoff,
+          dependencies: dependencies,
         ),
         _pull = PullPipeline(localDb: localDb, remote: remote),
         _stateController = StreamController<SyncStateSnapshot>.broadcast() {
