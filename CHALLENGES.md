@@ -51,8 +51,9 @@ Status legend:
 ## 6. Pagination
 | Concern | Status | How |
 |---|---|---|
-| Local pagination + cache | ⚠️ | Shown end-to-end in [`apps/pagination_app`](apps/pagination_app/) (VIPER): server pages fetched on demand via the REST adapter, cached locally, lazy-rendered. Not a package primitive. |
-| Missing pages / sort / cache size | 🧩 | App policy; the local adapter is the cache, the remote adapter the source. |
+| Local pagination + cache | ✅ | `PaginatedAdapter.getPage(table, {limit, orderBy, descending, after, includeDeleted})` — **keyset** pagination of the local store, returning a `PageResult` with a `nextCursor`. On sqflite, Hive, and in-memory. Also shown end-to-end in [`apps/pagination_app`](apps/pagination_app/) (VIPER). |
+| Missing / duplicated pages (stale reads) | ✅ | Keyset (seek) cursors anchor on `(orderBy, id)`, so inserts/deletes before the cursor can't shift the window — none of the duplicate/skip bugs that `LIMIT/OFFSET` produces. |
+| Sort / cache size | 🧩 | Choose the `orderBy`/direction per query; pair with `CacheEvictor` for size. |
 
 ## 7. Large storage / media
 | Concern | Status | How |
@@ -64,17 +65,17 @@ Status legend:
 | Concern | Status | How |
 |---|---|---|
 | OS-scheduled catch-up sync | ✅ | `flutter_universal_sync_background` — `BackgroundSyncCoordinator` rebuilds the engine in a headless isolate; WorkManager/BGTaskScheduler wiring documented. |
-| OS killing jobs / battery limits | ⚠️ | Inherent to the platforms; the coordinator returns success/failure for the OS retry policy. |
+| OS killing jobs / battery limits | ✅ | `BackgroundConstraints.requiresBatteryNotLow` (default on) + `requiresUnmeteredNetwork` defer jobs at the OS level. In-process, `BackgroundSyncCoordinator` takes a `BatteryReader`/`BatteryPolicy` and **skips** a run before any DB/network work on low battery, and coalesces overlapping wakes (returns `skipped`). |
 
 ## 9. Network state detection
 | Concern | Status | How |
 |---|---|---|
-| Connected vs reachable vs authenticated vs syncable | ⚠️ | The engine only needs a boolean `ConnectivityMonitor.isOnline` — **you** decide what "online" means (a heartbeat to your API, captive-portal/VPN/DNS checks, auth state). The `connectivity_plus` reference is connectivity-only. |
+| Connected vs reachable vs metered | ✅ | `ReachabilityMonitor` refines a raw OS connectivity stream into a confirmed `NetworkState` (offline / metered / unmetered): an injected probe catches captive portals ("connected, no internet") and downgrades to offline; metered/unmetered lets you defer heavy transfers off cellular. Map its `isOnline` into the engine's `ConnectivityMonitor`. |
 
 ## 10. Duplicate requests / idempotency
 | Concern | Status | How |
 |---|---|---|
-| Triple-tap submit | ⚠️ | One enqueue per mutation; the queue de-dupes by intent. Cross-restart re-push relies on idempotent server writes. |
+| Triple-tap submit | ✅ | `SubmitGuard` (core) — keyed single-flight collapses a burst of taps to one execution (all callers await the same result) plus a post-success cooldown; failures don't cool down so retry is immediate. Pair with idempotency keys for cross-restart safety. |
 | Idempotency keys | ✅ | The REST adapter sends the queue-entry id as an `idempotency-key` header (toggle via `idempotencyKeys`), so a re-pushed op is deduped server-side. |
 
 ## 11. Ordering dependencies
@@ -85,7 +86,7 @@ Status legend:
 ## 12. Schema migration
 | Concern | Status | How |
 |---|---|---|
-| Local DB migration | ⚠️ | SQL adapters use the engine's versioned tables (`onUpgrade` in the sqflite/drift demos). App-data migrations (e.g. `name → firstName/lastName`) are 🧩 your responsibility. |
+| Local DB migration | ✅ | `SchemaMigrator` runs ordered `SchemaMigration`s, each inside the adapter transaction with the version persisted to the meta KV — a failed step rolls back and re-runs next launch. Works for DDL and app-data migrations (`name → firstName/lastName`). |
 
 ## 13. Security
 | Concern | Status | How |
@@ -95,7 +96,7 @@ Status legend:
 ## 14. Offline authentication
 | Concern | Status | How |
 |---|---|---|
-| JWT expiry while offline / refresh | ⚠️ | Remote adapters read auth via a **per-request token callback**, so a refreshed token is picked up without rebuilding. The refresh/grace-period strategy is 🧩 yours. |
+| JWT expiry while offline / refresh | ✅ | [`flutter_universal_sync_auth`](packages/flutter_universal_sync_auth/) — `AuthSession` caches the token so the identity **survives offline** (`isAuthenticated` stays true when expired/offline), refreshes transparently when online (single-flighted), falls back to the cached token on refresh failure (no surprise sign-out), and yields Bearer `authHeaders` for adapters. |
 
 ## 15. Eventual consistency & status UI
 | Concern | Status | How |
@@ -117,6 +118,7 @@ Status legend:
 | Concern | Status | How |
 |---|---|---|
 | Backoff / batch / differential sync | ✅ | Exponential backoff, connectivity-gating, delta pull (cursor), no polling. See [apps/BATTERY_PERFORMANCE.md](apps/BATTERY_PERFORMANCE.md). |
+| Background battery drain | ✅ | `BackgroundConstraints.requiresBatteryNotLow`/`requiresUnmeteredNetwork` (OS-level) plus `BatteryPolicy` — the coordinator skips a wake on low battery before any work, and coalesces overlapping wakes. |
 
 ## 19. Real-time + offline
 | Concern | Status | How |
@@ -136,5 +138,9 @@ and a deterministic test surface. What used to be roadmap is now shipped behind
 the same stable interfaces — CRDT/OT (`_crdt`), idempotency-key headers,
 FK-aware ordering (`dependencies`), encrypted-at-rest storage (Hive), cache
 eviction (`PurgeableAdapter`/`CacheEvictor`), chunked resumable media uploads
-(`_attachments`), and a real-time push channel (`_realtime`). It still leaves
-genuine *policy* to you (reachability semantics, schema migrations, key custody).
+(`_attachments`), a real-time push channel (`_realtime`), keyset pagination
+(`PaginatedAdapter`, no stale reads), confirmed network state
+(`ReachabilityMonitor`), duplicate-submit protection (`SubmitGuard`), versioned
+local migrations (`SchemaMigrator`), battery-gated background runs, and
+offline-first auth (`_auth`). What's left is genuine *policy* — key custody,
+server-side invariant enforcement, and reachability heuristics.

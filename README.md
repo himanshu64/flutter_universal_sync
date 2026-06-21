@@ -42,9 +42,9 @@ your app ─▶ repository ─▶ LocalDatabaseAdapter (sqflite / drift / hive /
 
 | Package | What it is | Status |
 |---|---|---|
-| [`flutter_universal_sync_core`](packages/flutter_universal_sync_core/) | Contracts: `SyncEntity`, adapter interfaces, conflict resolvers, schema, errors, cache-eviction (`PurgeableAdapter`/`CacheEvictor`), shared contract test-suite | 0.2.1 |
+| [`flutter_universal_sync_core`](packages/flutter_universal_sync_core/) | Contracts + capabilities: adapter interfaces, conflict resolvers, schema, errors, cache-eviction (`PurgeableAdapter`), keyset pagination (`PaginatedAdapter`), `ReachabilityMonitor`, `SubmitGuard`, `SchemaMigrator`, shared contract test-suite | 0.3.0 |
 | [`flutter_universal_sync_engine`](packages/flutter_universal_sync_engine/) | The orchestration runtime: `SyncEngine`, push/pull pipelines, drain loop, FK-aware ordering, state stream | 0.1.1 |
-| [`flutter_universal_sync_background`](packages/flutter_universal_sync_background/) | Headless background sync (WorkManager / BGTaskScheduler) | 0.1.0 |
+| [`flutter_universal_sync_background`](packages/flutter_universal_sync_background/) | Headless background sync (WorkManager / BGTaskScheduler) + battery-gated runs | 0.2.0 |
 
 ### Local adapters (`LocalDatabaseAdapter`)
 
@@ -78,8 +78,9 @@ Optional add-ons, each behind a stable interface — bring in only what you need
 | [`…_crdt`](packages/flutter_universal_sync_crdt/) | `LwwMapResolver` — per-field LWW-Element-Map CRDT `ConflictResolver` | 0.1.0 — 100% cov |
 | [`…_attachments`](packages/flutter_universal_sync_attachments/) | `ChunkedUploader` + `AttachmentQueue` — resumable chunked media uploads | 0.1.0 — 100% cov |
 | [`…_realtime`](packages/flutter_universal_sync_realtime/) | `RealtimeChannel` — WebSocket/SSE server-push applied to the local store, reconnect-with-backoff | 0.1.0 — 100% cov |
+| [`…_auth`](packages/flutter_universal_sync_auth/) | `AuthSession` — offline-first auth: cached token survives offline, refreshes on reconnect, Bearer headers | 0.1.0 — 100% cov |
 
-Plus, built into existing packages: **idempotency-key** headers (REST), **encrypted-at-rest** storage (Hive), **FK-aware ordering** (engine `dependencies`), and **cache eviction** (`PurgeableAdapter`/`CacheEvictor` on sqflite + Hive). See [CHALLENGES.md](CHALLENGES.md).
+Plus, built into existing packages: **idempotency-key** headers (REST), **encrypted-at-rest** storage (Hive), **FK-aware ordering** (engine `dependencies`), **cache eviction** + **keyset pagination** (sqflite/Hive/in-memory), **network state detection** (`ReachabilityMonitor`), **duplicate-submit guard** (`SubmitGuard`), **schema migrations** (`SchemaMigrator`), and **battery-gated background runs**. See [CHALLENGES.md](CHALLENGES.md).
 
 A runnable end-to-end example lives in [`examples/sync_demo`](examples/sync_demo/) (Flutter UI + demo-grade sqflite & REST adapters + the Node test backend in [`examples/test-backend`](examples/test-backend/)).
 
