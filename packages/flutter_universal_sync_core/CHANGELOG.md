@@ -14,6 +14,9 @@
   refines a raw OS connectivity stream into a *confirmed* one, optionally
   verifying real internet with an injected probe (catches captive portals) and
   de-duplicating. Lets callers defer heavy transfers on metered links.
+- `SubmitGuard` — prevents duplicate submissions ("triple-tap Save"): keyed
+  single-flight coalescing plus a post-success cooldown. Failures don't cool
+  down, so a failed submit retries immediately.
 
 ## 0.2.1 — 2026-06-21
 
