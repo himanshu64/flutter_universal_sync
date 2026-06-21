@@ -5,3 +5,4 @@ library;
 
 export 'src/background_scheduler.dart';
 export 'src/background_sync_coordinator.dart';
+export 'src/battery_policy.dart';

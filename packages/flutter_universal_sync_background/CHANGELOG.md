@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0 — 2026-06-21
+
+### Added
+- `BatteryPolicy` + `BatterySnapshot` + `BatteryReader` — battery-gated runs.
+  Pass a `batteryReader` to `BackgroundSyncCoordinator` and a depleted run is
+  **skipped** before any database/network work (default: skip below 20% unless
+  charging).
+- `BackgroundSyncResult.skipped` — the run was deliberately not performed
+  (battery too low, or a run was already in progress). Treat as success.
+- Overlapping-wake **coalescing** — `runOnce` returns `skipped` if a run is
+  already in progress, so concurrent OS wakes don't stack engine cycles.
+- `BackgroundConstraints.requiresBatteryNotLow` (default `true`) and
+  `requiresUnmeteredNetwork` — OS-level deferral to save battery / avoid
+  cellular.
+
 ## 0.1.0 — 2026-06-21
 
 Initial release. Headless background sync for the `flutter_universal_sync`
