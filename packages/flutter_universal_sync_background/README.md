@@ -82,11 +82,42 @@ class WorkmanagerScheduler implements BackgroundScheduler {
 }
 ```
 
+## Design
+
+The OS wakes a **fresh isolate** with no live objects from the UI isolate, so the
+background callback must rebuild everything and tear it down:
+
+```
+OS background wake ─▶ callbackDispatcher (your app, @pragma vm:entry-point)
+                         │  builds adapters in the headless isolate
+                         ▼
+                 BackgroundSyncCoordinator.runOnce()   ← this package (pure Dart)
+                         │  build engine → syncNow(pull) → dispose
+                         ▼
+                 BackgroundSyncResult.success / .failure  → OS retry policy
+```
+
+Three types:
+
+- **`SyncEngineFactory`** — `Future<SyncEngine> Function()`; rebuilds a fully
+  wired engine inside the background isolate (no closures captured from the UI).
+- **`BackgroundSyncCoordinator`** — builds the engine, runs one
+  `syncNow(pull: true)`, **always disposes** it (no leaked DB handles), and maps
+  the result to `success`/`failure`. Never throws.
+- **`BackgroundScheduler`** + `BackgroundConstraints` — the OS-scheduler
+  interface you implement over `workmanager` (above).
+
+**Why no direct `workmanager` dependency** — the same three reasons the engine
+doesn't import `connectivity_plus`: it would make the package Flutter-only, lock
+us to that plugin's (churny) versioning, and prevent pure-Dart unit tests. The
+orchestration is fully unit-tested with the engine's in-memory test doubles.
+
 ## Known limitations
 
 - The OS enforces a ~15-minute minimum period; this is for catch-up sync, not
   real-time — that's the foreground engine's job.
 - iOS background execution is best-effort and OS-budgeted.
+- One periodic job pulls all registered tables; no per-table scheduling in v1.
 
 ## License
 

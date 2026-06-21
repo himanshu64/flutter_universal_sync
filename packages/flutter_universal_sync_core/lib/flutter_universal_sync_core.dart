@@ -1,7 +1,6 @@
 /// Core contracts for the flutter_universal_sync offline-first package family.
 ///
-/// See `README.md` and the spec in the monorepo's `docs/superpowers/specs/`
-/// for architectural context.
+/// See `README.md` for architectural context and the public API.
 library;
 
 export 'src/adapters/local_database_adapter.dart';

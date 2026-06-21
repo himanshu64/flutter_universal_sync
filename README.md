@@ -42,7 +42,7 @@ All run core's shared `runLocalDatabaseAdapterContract` suite.
 
 ### Remote adapters (`RemoteSyncAdapter`)
 
-See [the remote-adapter spec](docs/superpowers/specs/2026-06-21-remote-adapters-design.md).
+See [Writing an adapter](#writing-an-adapter) for the shared conventions.
 
 | Package | Backend | Status |
 |---|---|---|
@@ -53,6 +53,43 @@ See [the remote-adapter spec](docs/superpowers/specs/2026-06-21-remote-adapters-
 | [`…_firebase`](packages/flutter_universal_sync_firebase/) | Cloud Firestore (REST) | 0.1.0 — mock-tested, 98% cov |
 
 A runnable end-to-end example lives in [`examples/sync_demo`](examples/sync_demo/) (Flutter UI + demo-grade sqflite & REST adapters + the Node test backend in [`examples/test-backend`](examples/test-backend/)).
+
+## Writing an adapter
+
+The engine talks to two interfaces, so adding a backend never touches the engine.
+
+**`LocalDatabaseAdapter`** (local stores) — implement the interface and prove it
+by running core's shared `runLocalDatabaseAdapterContract` suite (the same suite
+the sqflite/drift/hive adapters pass). It owns two internal tables (`sync_queue`
+with `next_retry_at`, and the `_sync_meta` KV); your domain tables are yours.
+`transaction` must be atomic (writes roll back on throw); `insert` on a duplicate
+id throws `StateError`.
+
+**`RemoteSyncAdapter`** (backends) — two methods:
+
+```dart
+Future<void> pushChange(SyncQueueEntry entry);                        // one op
+Future<List<Map<String, dynamic>>> pullChanges(String table, DateTime? since);
+```
+
+Shared conventions across the shipped remote adapters:
+
+- **push** maps insert/update/delete to the backend's write (e.g. POST/PUT/DELETE
+  or an upsert). Throw `SyncPushException` on failure — the engine retries with
+  backoff.
+- **pull** returns rows changed since the cursor; filter on
+  `updated_at > since OR deleted_at > since` so soft-deletes propagate, and
+  paginate internally. Throw `SyncPullException` on failure.
+- **delete is a write**, not a hard delete — it sets `deleted_at` (a tombstone)
+  so peers pull it.
+- **conflicts** are pull-side only in v1: a push 409 surfaces as
+  `SyncPushException` and retries; there is no push-side resolver.
+- **auth** is read per request (pass a token/header callback) so rotating tokens
+  work without rebuilding the adapter.
+
+HTTP adapters take an injectable `http.Client` and are unit-tested with
+`package:http/testing`'s `MockClient`; local adapters inject their
+`DatabaseFactory`/`QueryExecutor` so they `dart test` headlessly.
 
 ## Quickstart
 
@@ -257,12 +294,13 @@ Try it: turn off Wi-Fi, add an item → watch it appear in `sync_queue` with `sy
 
 ## Docs
 
-Cross-cutting design specs live in [docs/superpowers/](docs/superpowers/):
-
-- [remote-adapters design](docs/superpowers/specs/2026-06-21-remote-adapters-design.md) · [background design](docs/superpowers/specs/2026-06-21-background-sync-design.md)
-- The core and engine designs now live in their package READMEs:
-  [core](packages/flutter_universal_sync_core/README.md) · [engine](packages/flutter_universal_sync_engine/README.md)
-  (install, public API, idempotency note, known v1 limitations). Every package has its own README.
+The design lives with the code — each package has its own README:
+[core](packages/flutter_universal_sync_core/README.md) ·
+[engine](packages/flutter_universal_sync_engine/README.md) (public API,
+idempotency, limitations) ·
+[background](packages/flutter_universal_sync_background/README.md) (headless
+design + WorkManager wiring) · and one per adapter. The cross-cutting adapter
+contract is in [Writing an adapter](#writing-an-adapter) above.
 
 ## License
 
