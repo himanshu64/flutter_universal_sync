@@ -17,6 +17,10 @@
 - `SubmitGuard` — prevents duplicate submissions ("triple-tap Save"): keyed
   single-flight coalescing plus a post-success cooldown. Failures don't cool
   down, so a failed submit retries immediately.
+- `SchemaMigrator` / `SchemaMigration` — versioned local-schema migrations.
+  Runs pending migrations in ascending order, each inside the adapter's
+  transaction with the version bump (stored in the meta KV), so a failed step
+  rolls back and re-runs next launch.
 
 ## 0.2.1 — 2026-06-21
 

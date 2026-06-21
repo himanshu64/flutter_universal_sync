@@ -17,6 +17,7 @@ export 'src/entities/sync_queue_entry.dart';
 export 'src/entities/sync_status.dart';
 export 'src/errors/sync_errors.dart';
 export 'src/id/id_generator.dart';
+export 'src/migration/schema_migrator.dart';
 export 'src/network/network_state.dart';
 export 'src/network/reachability_monitor.dart';
 export 'src/pagination/keyset.dart';
